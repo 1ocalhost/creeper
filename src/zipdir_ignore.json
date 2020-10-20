@@ -1,0 +1,10 @@
+{
+    "output": "src.pyc",
+    "exclude_self": true,
+    "exclude_pack_script": true,
+    "use_git_ignore": true,
+    "forder_path": [],
+    "folder_name": [],
+    "file_path": [],
+    "file_name": []
+}

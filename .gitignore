@@ -1,0 +1,8 @@
+__pycache__/
+
+/data/bin/
+/data/tmp/
+/data/log/
+
+/data/conf/user/
+/data/conf/vendor/cn_ip.txt
