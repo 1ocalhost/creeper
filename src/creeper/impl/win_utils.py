@@ -2,23 +2,9 @@ import ctypes
 import ctypes.wintypes
 
 _advapi32 = ctypes.windll.advapi32
-_shell32 = ctypes.windll.shell32
-
 RegOpenKeyEx = _advapi32.RegOpenKeyExW
 RegQueryValueEx = _advapi32.RegQueryValueExW
 RegCloseKey = _advapi32.RegCloseKey
-SHGetFolderPath = _shell32.SHGetFolderPathW
-
-
-def get_win_startup_path(all_user=False):
-    CSIDL_STARTUP = 7
-    CSIDL_COMMON_STARTUP = 24
-    flag = all_user and CSIDL_COMMON_STARTUP or CSIDL_STARTUP
-
-    PathStr = ctypes.wintypes.WCHAR * 260
-    path = PathStr()
-    result = SHGetFolderPath(0, flag, 0, 0, path)
-    return (result == 0) and path.value or None
 
 
 def _get_win_machine_guid_impl(key):

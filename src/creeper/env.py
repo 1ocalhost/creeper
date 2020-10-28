@@ -83,3 +83,5 @@ FILE_CUR_NODE_JSON = 'cur_node.json'
 
 APP_CONF = _load_conf(PATH_APP_CONF, False)
 USER_CONF = ConfMapping(CONF_DIR / 'user_conf.json')
+
+CONF_DIR.mkdir(parents=True, exist_ok=True)

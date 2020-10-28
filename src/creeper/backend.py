@@ -76,8 +76,7 @@ class BackendUtility:
 
     def try_copy_uid_file(self):
         dst = self.backend_uid_exe_path
-        if not dst.parent.exists():
-            dst.parent.mkdir()
+        dst.parent.mkdir(parents=True, exist_ok=True)
 
         if not os.path.isfile(dst):
             src = BIN_DIR / self.backend_exe

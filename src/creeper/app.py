@@ -30,9 +30,10 @@ class AppIcons:
 
 class App:
     def __init__(self):
+        host_ip = '0.0.0.0' if USER_CONF.allow_lan else '127.0.0.1'
         self.icons = AppIcons()
         self.tray_icon = None
-        self.app_host = '0.0.0.0'
+        self.app_host = host_ip
         self.app_port = 1080
         self.router = Router(PATH_CNIP_DB)
         self.pac_server = PACServer(self)

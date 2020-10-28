@@ -166,7 +166,7 @@
           <input type="text" v-model="feedUrl" :disabled="!feedUrl" readonly />
           <button @click="editFeedUrl()">Edit</button>
           <div class="feed-updated">
-            <a>(updated {{serversUpdate}})</a>
+            <a>{{serversUpdateTip}}</a>
           </div>
         </div>
         <table :class="{'core-content-only': !showExtraInfo}">
@@ -309,6 +309,13 @@
       computed: {
         duplicateNumber() {
           return this.servers.filter(item => item.duplicate).length;
+        },
+        serversUpdateTip() {
+          if (this.serversUpdate) {
+            return `(updated ${this.serversUpdate})`;
+          } else {
+            return '';
+          }
         }
       },
       methods: {
@@ -359,7 +366,7 @@
           }
         },
         isSpecialItem(item, index) {
-          if (index >= 2) {
+          if (index >= 5) {
             return false;
           }
 
@@ -647,7 +654,7 @@
           }
 
           updateLANSetting(data.allow_lan);
-          vue.feedUrl = data.feed_url;
+          vue.feedUrl = data.feed_url || '';
         })
       ;
     }
@@ -690,7 +697,7 @@
         let proxies = data.servers.proxies;
         adaptPropNames(proxies);
 
-        for (let i = 0; i < 2; ++i) {
+        for (let i = 0; i < proxies.length; ++i) {
           if (vue.isSpecialItem(proxies[i], i)) {
             proxies[i].duplicate = false;
           }
