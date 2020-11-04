@@ -8,7 +8,8 @@
             "program": "${workspaceFolder}/src/__main__.py",
             "env": {
                 "CREEPER_DBG_MODE": "1",
-                "CREEPER_NO_BACKEND": "1"
+                "CREEPER_NO_BACKEND": "1",
+                "CREEPER_MAIN_PORT": "1081"
             },
             "console": "integratedTerminal"
         },

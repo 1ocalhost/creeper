@@ -14,12 +14,13 @@ from urllib.parse import urlsplit, parse_qs
 
 from creeper import statistic
 from creeper.log import logger
-from creeper.env import CONF_DIR, HTML_DIR, USER_CONF, \
+from creeper.env import IS_DEBUG, CONF_DIR, HTML_DIR, USER_CONF, \
     FILE_FEED_JSON, FILE_SPEED_JSON, FILE_CUR_NODE_JSON
 from creeper.utils import write_drain, fmt_exc, readable_exc, AttrDict
-from creeper.feed import fetch_feed
+from creeper.feed import update_feed
 from creeper.measure import test_backend_speed
 from creeper.backend import backend_utilitys
+from creeper.diagnosis import diagnosis_network
 
 MIME_HTML = 'text/html'
 MIME_JSON = 'application/json'
@@ -31,7 +32,26 @@ CONF_DATA_FILES = [
     FILE_CUR_NODE_JSON,
 ]
 
-opt_allow_lan = False
+
+class ChunkedWriter:
+    def __init__(self, req):
+        self.writer = req.writer
+
+    async def begin(self):
+        headers = [f'Transfer-Encoding: chunked']
+        await write_http_response(
+            self.writer, None, 200, MIME_HTML, headers)
+
+    async def write(self, data=''):
+        data = data.encode()
+        chunk = ('%x' % len(data)).encode()
+        chunk += b'\r\n'
+        chunk += data
+        chunk += b'\r\n'
+        await write_drain(self.writer, chunk)
+
+    async def end(self):
+        await self.write()
 
 
 def make_random_token(len=24):
@@ -55,20 +75,23 @@ def make_http_status(status):
 
 
 async def write_http_response(
-        writer, body, status=200, mime=MIME_HTML, headers=[]):
+        writer, body=None, status=200, mime=MIME_HTML, headers=[]):
     all_headers = ['HTTP/1.1 ' + make_http_status(status)]
     if mime:
-        all_headers.append('Content-Type: ' + mime)
+        all_headers.append(f'Content-Type: {mime}')
+
+    if body is None:
+        body = b''
+    else:
+        all_headers.append(f'Content-Length: {len(body)}')
 
     all_headers += headers
     all_headers.append('\r\n')
 
     response = '\r\n'.join(all_headers).encode()
     if isinstance(body, str):
-        response += body.encode()
-    else:
-        response += body
-
+        body = body.encode()
+    response += body
     await write_drain(writer, response)
 
 
@@ -127,7 +150,7 @@ async def web_socket_accept(headers, writer):
         'Sec-WebSocket-Accept: ' + accept(websocket_key),
     ]
 
-    await write_http_response(writer, '', 101, None, headers)
+    await write_http_response(writer, None, 101, None, headers)
 
 
 async def web_socket_send(writer, text):
@@ -231,10 +254,7 @@ async def try_read_file(writer, api_path):
         file_data = file.read()
 
     mime = suffix_to_mime(file_path.name)
-    headers = [
-        f'Content-Length: {file_size}',
-    ]
-    await write_http_response(writer, file_data, 200, mime, headers)
+    await write_http_response(writer, file_data, 200, mime)
 
 
 class HttpBadRequest(Exception):
@@ -276,6 +296,7 @@ class ApiHandler:
         self.route('POST', '/api/switch_node', self.api_switch_node)
         self.route('GET ', '/api/user_conf', self.api_get_user_conf)
         self.route('POST', '/api/set_value', self.api_set_value)
+        self.route('GET ', '/api/diagnosis', self.api_diagnosis)
 
     def route(self, method, path, func):
         method_ = method.strip().upper()
@@ -297,16 +318,7 @@ class ApiHandler:
         await route_stream(req.url.query, req.headers, req.writer)
 
     async def api_fetch_feed(self, req):
-        feed = await fetch_feed()
-        new_feed = {
-            'update': time.time(),
-            'servers': feed,
-        }
-
-        feed_json = json.dumps(new_feed)
-        with open(CONF_DIR / FILE_FEED_JSON, 'w') as file:
-            file.write(feed_json)
-
+        new_feed = await update_feed()
         await req.result_ok(new_feed)
 
     async def api_test_speed(self, req):
@@ -316,11 +328,7 @@ class ApiHandler:
 
     async def api_switch_node(self, req):
         conf = await read_json_body(req)
-        backend_utilitys.switch_conf_file(AttrDict(conf))
-        backend = self.app.backend
-        if backend:
-            backend.quit()
-            await backend.start_async()
+        await backend_utilitys.restart(self.app.backend, AttrDict(conf))
         await req.result_ok({})
 
     async def api_get_user_conf(self, req):
@@ -341,6 +349,24 @@ class ApiHandler:
         else:
             raise ValueError(f'bad key name: {req_key}')
         await req.result_ok({})
+
+    async def api_diagnosis(self, req):
+        writer = ChunkedWriter(req)
+        await writer.begin()
+        await writer.write(f'<!-- resolve delayed rendering of IE -->' * 20)
+
+        async def call_func(func, text):
+            escaped_text = text.replace('\n', R'\n').replace('"', R'\"')
+            await writer.write(
+                f'<script>parent.{func}("{escaped_text}")</script>')
+
+        async for text in diagnosis_network(self.app.backend):
+            if isinstance(text, list):
+                await call_func('updateState', text[0])
+            else:
+                await call_func('appendLog', text)
+
+        await writer.end()
 
     def is_pac_path(self, path):
         url = urlsplit(path)
@@ -401,19 +427,23 @@ def get_api_filter(app):
 
         if tunnel_mode or host:
             if not peer_ip.is_loopback and not app.did_allow_lan:
-                logger.warning(f'prevent access from {peer_ip}')
+                logger.warning(f'prevent proxy request from {peer_ip}')
                 return True
             return False
 
-        if not peer_ip.is_loopback:
-            if api_handler.is_pac_path(path) and app.did_allow_lan:
-                pass
-            else:
-                msg = f'you are not allowed to access this page! ({peer_ip})'
-                await api_result_err(writer, msg, 403)
-                return True
+        did_allow = True
+        need_auth = (not peer_ip.is_loopback and
+                     not api_handler.is_pac_path(path))
 
-        await api_handler.handle(reader, writer, path, raw_header)
+        if need_auth:
+            did_allow = app.did_allow_lan or IS_DEBUG
+
+        if did_allow:
+            await api_handler.handle(reader, writer, path, raw_header)
+        else:
+            msg = f'you are not allowed to access this page! ({peer_ip})'
+            await api_result_err(writer, msg, 403)
+
         return True
 
     return http_filter

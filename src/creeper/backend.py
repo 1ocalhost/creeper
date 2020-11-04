@@ -217,6 +217,12 @@ class BackendUtilitys:
                     f.write(json.dumps(conf_data))
                 break
 
+    async def restart(self, backend, conf):
+        self.switch_conf_file(conf)
+        if backend:
+            backend.quit()
+            await backend.start_async()
+
 
 backend_utilitys = BackendUtilitys()
 

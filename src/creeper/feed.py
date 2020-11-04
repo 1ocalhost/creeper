@@ -1,11 +1,12 @@
 import re
+import time
 import json
 import base64
 import asyncio
 import urllib.request
 from urllib.parse import parse_qsl, urlsplit
 
-from creeper.env import USER_CONF
+from creeper.env import USER_CONF, CONF_DIR, FILE_FEED_JSON
 from creeper.log import logger
 from creeper.utils import readable_exc
 
@@ -144,3 +145,17 @@ async def fetch_feed():
     except Exception as exc:
         logger.error(readable_exc(exc))
         raise FeedParseError()
+
+
+async def update_feed():
+    feed = await fetch_feed()
+    new_feed = {
+        'update': time.time(),
+        'servers': feed,
+    }
+
+    feed_json = json.dumps(new_feed)
+    with open(CONF_DIR / FILE_FEED_JSON, 'w') as file:
+        file.write(feed_json)
+
+    return new_feed

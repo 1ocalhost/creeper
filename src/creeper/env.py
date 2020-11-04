@@ -54,6 +54,15 @@ class ConfMapping(SimpleNamespace):
         super().__setattr__('conf', new_conf)
 
 
+def _rewrite_main_port(conf):
+    main_port = os.environ.get('CREEPER_MAIN_PORT')
+    try:
+        main_port = int(main_port)
+    except Exception:
+        return
+    conf['main_port'] = main_port
+
+
 APP_NAME = 'Creeper'
 
 ENV_NO_BACKEND = env_get_bool('CREEPER_NO_BACKEND')
@@ -82,6 +91,7 @@ FILE_SPEED_JSON = 'speed.json'
 FILE_CUR_NODE_JSON = 'cur_node.json'
 
 APP_CONF = _load_conf(PATH_APP_CONF, False)
+_rewrite_main_port(APP_CONF)
 USER_CONF = ConfMapping(CONF_DIR / 'user_conf.json')
 
 CONF_DIR.mkdir(parents=True, exist_ok=True)

@@ -130,8 +130,13 @@ class SpeedTest:
     def connect(self):
         shared = self.shared
         shared.start_time = now()
-        opener = _make_proxy_request(self.proxy)
-        self.page = opener.open(self.url)
+
+        if self.proxy:
+            opener = _make_proxy_request(self.proxy)
+            self.page = opener.open(self.url)
+        else:
+            self.page = request.urlopen(self.url)
+
         data = self.page.read(1)
         shared.start_dl_time = now()
         self._append_dl_data(data)
@@ -190,8 +195,19 @@ async def test_download_speed(url, proxy=None):
 
 
 def update_speed_cache(server_uid, result):
-    speed_file_path = CONF_DIR / FILE_SPEED_JSON
+    new_item = {
+        'update': now(),
+    }
 
+    if isinstance(result, Exception):
+        new_item['error'] = fmt_exc(result)
+    else:
+        new_item['result'] = result.__dict__
+
+    if not server_uid:
+        return new_item
+
+    speed_file_path = CONF_DIR / FILE_SPEED_JSON
     try:
         with open(speed_file_path) as f:
             speed_data_origin = json.loads(f.read())
@@ -202,15 +218,6 @@ def update_speed_cache(server_uid, result):
         speed_data = dict(speed_data[:500])
     except FileNotFoundError:
         speed_data = {}
-
-    new_item = {
-        'update': now(),
-    }
-
-    if isinstance(result, Exception):
-        new_item['error'] = fmt_exc(result)
-    else:
-        new_item['result'] = result.__dict__
 
     speed_data[server_uid] = new_item
     new_content = json.dumps(speed_data)

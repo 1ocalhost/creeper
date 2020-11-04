@@ -7,7 +7,7 @@ from creeper import statistic
 from creeper.utils import check_singleton
 from creeper.impl import http_proxy
 from creeper.env import ICON_DIR, PATH_CNIP_DB, \
-    APP_NAME, USER_CONF, ENV_NO_BACKEND
+    APP_NAME, APP_CONF, USER_CONF, ENV_NO_BACKEND
 from creeper.log import logger
 from creeper.router import Router
 from creeper.pac import PACServer
@@ -34,7 +34,7 @@ class App:
         self.icons = AppIcons()
         self.tray_icon = None
         self.app_host = host_ip
-        self.app_port = 1080
+        self.app_port = APP_CONF['main_port']
         self.router = Router(PATH_CNIP_DB)
         self.pac_server = PACServer(self)
         self.backend = None
