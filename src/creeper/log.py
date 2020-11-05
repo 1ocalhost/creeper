@@ -14,7 +14,8 @@ def _make_file_handler():
     log_file = LOG_DIR / f'{MODULE_NAME}.log'
 
     handler = RotatingFileHandler(
-        log_file, maxBytes=2 * 1024 * 1024, backupCount=10)
+        log_file, encoding='utf-8',
+        maxBytes=2 * 1024 * 1024, backupCount=10)
     formatter = logging.Formatter(LOG_FORMAT)
     handler.setFormatter(formatter)
     handler.setLevel(LOG_LEVEL)
