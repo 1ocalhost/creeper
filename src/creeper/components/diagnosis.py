@@ -30,45 +30,70 @@ async def _test_local_network():
     raise Exception('Your local network has a few problems')
 
 
-async def _switch_node(backend, results):
-    def get_key(item):
-        speed = item[1]['average_dl_speed']
-        NUM_CHARS = string.digits + '.'
-        speed_num_char = [x for x in speed if x in NUM_CHARS]
-        speed = float(''.join(speed_num_char))
-        return speed
+def _parse_speed_text(text):
+    NUM_CHARS = string.digits + '.'
+    speed_num_char = [x for x in text if x in NUM_CHARS]
+    return float(''.join(speed_num_char))
 
-    conf, speed = max(results, key=get_key)
-    logger.info(f'switch node: {speed} - {conf}')
-    await backend_utilitys.restart(backend, conf)
+
+async def _test_nodes_speed_once(build_conf, results):
+    for i, item in enumerate(results, 1):
+        conf = build_conf(item[0])
+        yield f'Test node {i}/{len(results)}... '
+
+        try:
+            new_item = await test_backend_speed(conf)
+            result = new_item['result']
+            speed_text = result['average_dl_speed']
+            speed_num = _parse_speed_text(speed_text)
+            yield f'{speed_text}\n'
+        except Exception as exc:
+            logger.error(f'with node {i}, {readable_exc(exc)}')
+            speed_num = 0.0
+            yield f'Failed\n'
+
+        item[1].append(speed_num)
+
+
+def _get_speed_result_key(item):
+    return sum(item[1])
+
+
+def _select_half_fast_nodes(items):
+    result = list(sorted(items, key=_get_speed_result_key))
+    return result[len(result)//2:]
 
 
 async def _test_nodes_speed(backend, nodes_data):
     scheme = nodes_data['scheme']
     proxies = nodes_data['proxies']
-    results = []
 
-    for i, item in enumerate(proxies, 1):
-        conf = AttrDict({
+    def build_conf(item):
+        return AttrDict({
             'type': scheme,
             'uid': None,
             'data': item,
         })
-        yield f'Test node {i}/{len(proxies)}... '
-        try:
-            new_item = await test_backend_speed(conf)
-            result = new_item['result']
-            results.append((conf, result))
-            speed = result['average_dl_speed']
-            yield f'{speed}\n'
-        except Exception as exc:
-            logger.error(f'with node {i}, {readable_exc(exc)}')
-            yield f'Failed\n'
+
+    results = [(p, []) for p in proxies]
+    async for v in _test_nodes_speed_once(build_conf, results):
+        yield v
 
     if not len(results):
         raise Exception('No nodes available to use')
 
-    await _switch_node(backend, results)
+    for i in range(2):
+        results = _select_half_fast_nodes(results)
+        if len(results) == 1:
+            break
+        async for v in _test_nodes_speed_once(build_conf, results):
+            yield v
+
+    proxy, speed = max(results, key=_get_speed_result_key)
+    cur_conf = build_conf(proxy)
+
+    logger.info(f'switch node: {speed} - {cur_conf}')
+    await backend_utilitys.restart(backend, cur_conf)
     yield ['ok']
 
 
