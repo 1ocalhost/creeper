@@ -8,7 +8,9 @@ from urllib.parse import parse_qsl, urlsplit
 
 from creeper.env import USER_CONF, CONF_DIR, FILE_FEED_JSON
 from creeper.log import logger
-from creeper.utils import readable_exc
+from creeper.utils import readable_exc, _MiB
+
+FEED_FILE_PATH = CONF_DIR / FILE_FEED_JSON
 
 
 class FeedParseError(Exception):
@@ -155,7 +157,17 @@ async def update_feed():
     }
 
     feed_json = json.dumps(new_feed)
-    with open(CONF_DIR / FILE_FEED_JSON, 'w') as file:
+    with open(FEED_FILE_PATH, 'w') as file:
         file.write(feed_json)
 
     return new_feed
+
+
+def read_feed():
+    try:
+        with open(FEED_FILE_PATH) as file:
+            data = file.read(_MiB)
+        return json.loads(data)
+    except Exception as exc:
+        logger.warning(readable_exc(exc))
+        return None

@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 
 from creeper.log import logger
 from creeper.utils import readable_exc, fmt_exc, AttrDict
-from creeper.feed import update_feed
+from creeper.feed import update_feed, read_feed
 from creeper.measure import test_download_speed, test_backend_speed
 from creeper.backend import backend_utilitys
 
@@ -77,8 +77,10 @@ async def _update_subscription(backend):
         new_feed = await update_feed()
     except Exception as exc:
         exc_type = type(exc).__name__
-        raise Exception(f'Can not update subscription. ({exc_type})')
+        yield f'Can not update subscription. ({exc_type})\n'
+        new_feed = read_feed()
 
+    assert new_feed
     yield f'Test the speed of nodes...\n'
     nodes_data = new_feed['servers']
     async for v in _test_nodes_speed(backend, nodes_data):
