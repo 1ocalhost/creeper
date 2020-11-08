@@ -11,7 +11,7 @@ from sockshandler import SocksiPyHandler
 
 from creeper.utils import _KiB, _MiB, now, fmt_exc
 from creeper.env import CONF_DIR, APP_CONF, FILE_SPEED_JSON
-from creeper.backend import Backend
+from creeper.proxy.backend import Backend
 
 
 class CancellablePool:

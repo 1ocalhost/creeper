@@ -3,17 +3,17 @@ import asyncio
 import webbrowser
 import aiosocks
 
-from creeper import statistic
 from creeper.utils import check_singleton
 from creeper.impl import http_proxy
 from creeper.env import ICON_DIR, PATH_CNIP_DB, \
     APP_NAME, APP_CONF, USER_CONF, ENV_NO_BACKEND
 from creeper.log import logger
-from creeper.router import Router
-from creeper.pac import PACServer
-from creeper.backend import backend_utilitys, Backend
+from creeper.proxy.router import Router
+from creeper.proxy.pac import PACServer
+from creeper.proxy.backend import backend_utilitys, Backend
+from creeper.components import statistic
+from creeper.components.update import check_update
 from creeper.http_api import get_api_filter
-from creeper.update import check_update
 from creeper.impl.win_tray_icon import start_tray_icon_menu
 
 

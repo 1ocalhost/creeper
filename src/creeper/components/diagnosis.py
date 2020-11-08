@@ -3,9 +3,9 @@ from urllib.parse import urlparse
 
 from creeper.log import logger
 from creeper.utils import readable_exc, fmt_exc, AttrDict
-from creeper.feed import update_feed, read_feed
-from creeper.measure import test_download_speed, test_backend_speed
-from creeper.backend import backend_utilitys
+from creeper.components.measure import test_download_speed, test_backend_speed
+from creeper.proxy.feed import update_feed, read_feed
+from creeper.proxy.backend import backend_utilitys
 
 singleton_running = False
 

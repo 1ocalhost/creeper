@@ -12,15 +12,15 @@ from types import SimpleNamespace
 from ipaddress import ip_address
 from urllib.parse import urlsplit, parse_qs
 
-from creeper import statistic
 from creeper.log import logger
 from creeper.env import IS_DEBUG, CONF_DIR, HTML_DIR, USER_CONF, \
     FILE_FEED_JSON, FILE_SPEED_JSON, FILE_CUR_NODE_JSON
 from creeper.utils import write_drain, fmt_exc, readable_exc, AttrDict
-from creeper.feed import update_feed
-from creeper.measure import test_backend_speed
-from creeper.backend import backend_utilitys
-from creeper.diagnosis import diagnosis_network
+from creeper.proxy.feed import update_feed
+from creeper.proxy.backend import backend_utilitys
+from creeper.components import statistic
+from creeper.components.measure import test_backend_speed
+from creeper.components.diagnosis import diagnosis_network
 
 MIME_HTML = 'text/html'
 MIME_JSON = 'application/json'
