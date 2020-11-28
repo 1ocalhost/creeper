@@ -174,6 +174,8 @@ async def server_handler(reader, writer, opt):
 
 
 async def server_loop(host, port, opt):
+    on_exc = opt.get('on_exc')
+
     def exception_handler(loop, context):
         ex = context.get('exception')
         if ex is None:
@@ -182,6 +184,9 @@ async def server_loop(host, port, opt):
         if isinstance(ex, AssertionError) and \
                 str(ex) == 'feed_data after feed_eof':
             return
+
+        if (on_exc):
+            on_exc(ex)
 
         logger.warn(f'server_loop: {readable_exc(ex)}')
 
@@ -195,7 +200,7 @@ async def server_loop(host, port, opt):
     started = opt.get('started')
     if started:
         addr = server.sockets[0].getsockname()
-        started(addr)
+        started(server, addr)
 
     async with server:
         await server.serve_forever()

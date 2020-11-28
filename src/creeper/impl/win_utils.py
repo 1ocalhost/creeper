@@ -1,10 +1,33 @@
+import os
+import sys
 import ctypes
 import ctypes.wintypes
+from subprocess import call, CREATE_NO_WINDOW
 
+_user32 = ctypes.windll.user32
 _advapi32 = ctypes.windll.advapi32
+
+_MessageBoxW = _user32.MessageBoxW
 RegOpenKeyEx = _advapi32.RegOpenKeyExW
 RegQueryValueEx = _advapi32.RegQueryValueExW
 RegCloseKey = _advapi32.RegCloseKey
+
+
+class MsgBox:
+    MB_OK = 0
+    MB_OKCANCEL = 1
+    MB_YESNOCANCEL = 3
+    MB_YESNO = 4
+
+    IDOK = 1
+    IDCANCEL = 2
+    IDABORT = 3
+    IDYES = 6
+    IDNO = 7
+
+    @staticmethod
+    def show(text, caption, flags):
+        return _MessageBoxW(None, text, caption, flags)
 
 
 def _get_win_machine_guid_impl(key):
@@ -51,3 +74,20 @@ def get_win_machine_guid():
     result = _get_win_machine_guid_impl(key)
     RegCloseKey(key)
     return result
+
+
+def _get_self_cmd():
+    def escape(str_):
+        if ' ' in str_:
+            return f'"{str_}"'
+        return str_
+
+    args = [sys.executable] + sys.argv
+    return ' '.join(map(escape, args))
+
+
+def restart():
+    pid = os.getpid()
+    self_cmd = _get_self_cmd()
+    cmd = f'taskkill /F /PID {pid} && {self_cmd}'
+    call(cmd, shell=True, creationflags=CREATE_NO_WINDOW)

@@ -15,6 +15,7 @@ from creeper.components import statistic
 from creeper.components.update import check_update
 from creeper.http_api import get_api_filter
 from creeper.impl.win_tray_icon import start_tray_icon_menu
+from creeper.impl.win_utils import MsgBox, restart
 
 
 class AppIcons:
@@ -22,6 +23,7 @@ class AppIcons:
         icons_dir = ICON_DIR
         self.play = icons_dir / 'play.ico'
         self.stop = icons_dir / 'stop.ico'
+        self.settings = icons_dir / 'settings.ico'
         self.help = icons_dir / 'help.ico'
         self.tray_play = icons_dir / 'tray_play.ico'
         self.tray_play_lan = icons_dir / 'tray_play_lan.ico'
@@ -31,6 +33,7 @@ class AppIcons:
 class App:
     def __init__(self):
         host_ip = '0.0.0.0' if USER_CONF.allow_lan else '127.0.0.1'
+        self.http_server = None
         self.icons = AppIcons()
         self.tray_icon = None
         self.app_host = host_ip
@@ -38,6 +41,7 @@ class App:
         self.router = Router(PATH_CNIP_DB)
         self.pac_server = PACServer(self)
         self.backend = None
+        self.need_restart = False
 
     @property
     def did_allow_lan(self):
@@ -86,7 +90,8 @@ class App:
 
         return connection, statistic_
 
-    def on_server_started(self, addr):
+    def on_server_started(self, server, addr):
+        self.http_server = server
         host, port = addr
         logger.info(f'serving on: {host}:{port}')
         self.tray_icon.update(hover_text=f'{APP_NAME} ({port})')
@@ -94,12 +99,31 @@ class App:
         if not self.pac_server.update_sys_setting(True):
             logger.error('update pac setting')
 
+    def did_listening_socket_close(self, exc):
+        if isinstance(exc, OSError) and '[WinError 64]' in str(exc):
+            return True
+
+        if self.http_server.sockets[0].fileno() == -1:
+            return True
+
+        return False
+
+    def on_server_exc(self, exc):
+        if self.need_restart:
+            return
+
+        if self.did_listening_socket_close(exc):
+            self.need_restart = True
+            self.update_state_icon()
+            self.pac_server.update_sys_setting(False)
+
     def start_server(self):
         http_filter = get_api_filter(self)
         opt = {
             'open_conn': self.on_open_conn,
             'req_filter': http_filter,
             'started': self.on_server_started,
+            'on_exc': self.on_server_exc,
         }
 
         retry_times = 0
@@ -129,6 +153,10 @@ class App:
 
     def init_tray_icon(self):
         def on_turn_on(icon):
+            if self.need_restart:
+                self.restart()
+                return
+
             self.pac_server.update_sys_setting(True)
             self.did_enable_proxy = True
             self.update_state_icon(icon)
@@ -141,14 +169,21 @@ class App:
         def on_help(icon):
             webbrowser.open(self.base_url() + '/help.html')
 
-        def on_magic(icon):
+        def on_settings(icon):
             webbrowser.open(self.base_url() + '/settings.html')
+
+        def on_magic(icon):
+            result = MsgBox.show(
+                'Restart the program?', APP_NAME, MsgBox.MB_OKCANCEL)
+            if result == MsgBox.IDOK:
+                self.restart()
 
         menu_items = [
             (self.icons.play, 'Turn On', on_turn_on,
-                lambda: not self.did_enable_proxy),
+                lambda: not self.did_enable_proxy_menu),
             (self.icons.stop, 'Turn Off', on_turn_off,
-                lambda: self.did_enable_proxy),
+                lambda: self.did_enable_proxy_menu),
+            (self.icons.settings, 'Settings', on_settings),
             (self.icons.help, 'Help', on_help),
         ]
 
@@ -157,7 +192,14 @@ class App:
             menu_items, state_icon, APP_NAME)
         self.tray_icon.set_magic_handler(on_magic)
 
+    @property
+    def did_enable_proxy_menu(self):
+        return self.did_enable_proxy and not self.need_restart
+
     def make_state_icon(self):
+        if self.need_restart:
+            return self.icons.tray_stop
+
         if self.did_enable_proxy:
             if self.did_allow_lan:
                 return self.icons.tray_play_lan
@@ -173,6 +215,10 @@ class App:
 
         state_icon = self.make_state_icon()
         tray_icon.update(state_icon)
+
+    def restart(self):
+        self.tray_icon.destroy()
+        restart()
 
     def run(self):
         check_singleton()

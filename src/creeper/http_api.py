@@ -360,7 +360,7 @@ class ApiHandler:
             await writer.write(
                 f'<script>parent.{func}("{escaped_text}")</script>')
 
-        async for text in diagnosis_network(self.app.backend):
+        async for text in diagnosis_network(self.app):
             if isinstance(text, list):
                 await call_func('updateState', text[0])
             else:

@@ -64,7 +64,7 @@ def _select_half_fast_nodes(items):
     return result[len(result)//2:]
 
 
-async def _test_nodes_speed(backend, nodes_data):
+async def _test_nodes_speed(app, nodes_data):
     scheme = nodes_data['scheme']
     proxies = nodes_data['proxies']
 
@@ -93,11 +93,12 @@ async def _test_nodes_speed(backend, nodes_data):
     cur_conf = build_conf(proxy)
 
     logger.info(f'switch node: {speed} - {cur_conf}')
-    await backend_utilitys.restart(backend, cur_conf)
+    await backend_utilitys.restart(app.backend, cur_conf)
+    app.pac_server.update_sys_setting(True)
     yield ['ok']
 
 
-async def _update_subscription(backend):
+async def _update_subscription(app):
     try:
         new_feed = await update_feed()
     except Exception as exc:
@@ -108,21 +109,21 @@ async def _update_subscription(backend):
     assert new_feed
     yield f'Test the speed of nodes...\n'
     nodes_data = new_feed['servers']
-    async for v in _test_nodes_speed(backend, nodes_data):
+    async for v in _test_nodes_speed(app, nodes_data):
         yield v
 
 
-async def _diagnosis_network_impl(backend):
+async def _diagnosis_network_impl(app):
     yield f'Test local network...\n'
     async for v in _test_local_network():
         yield v
 
     yield f'Try update subscription...\n'
-    async for v in _update_subscription(backend):
+    async for v in _update_subscription(app):
         yield v
 
 
-async def diagnosis_network(backend):
+async def diagnosis_network(app):
     global singleton_running
     if singleton_running:
         yield 'Another diagnosis is in progress.'
@@ -130,7 +131,7 @@ async def diagnosis_network(backend):
 
     singleton_running = True
     try:
-        async for v in _diagnosis_network_impl(backend):
+        async for v in _diagnosis_network_impl(app):
             yield v
     except Exception as exc:
         yield f'Sorry, {fmt_exc(exc)}\n'
