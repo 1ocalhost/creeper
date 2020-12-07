@@ -89,5 +89,5 @@ def _get_self_cmd():
 def restart():
     pid = os.getpid()
     self_cmd = _get_self_cmd()
-    cmd = f'taskkill /F /PID {pid} && {self_cmd}'
+    cmd = f'taskkill /F /PID {pid} && start {self_cmd}'
     call(cmd, shell=True, creationflags=CREATE_NO_WINDOW)
