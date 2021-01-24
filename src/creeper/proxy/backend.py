@@ -125,22 +125,27 @@ class BackendUtilityV2Ray(BackendUtility):
         super().__init__('v2ray.exe', 'vmess.json')
 
     def _stream_setting(self, data):
+        result = {'network': data.net}
         if data.net == 'ws':
-            options = {
-                'wsSettings': {
-                    'path': data.path,
-                    'headers': {
-                      'Host': data.host
-                    }
+            result['wsSettings'] = {
+                'connectionReuse': True,
+                'path': data.path,
+                'headers': {
+                    'Host': data.host
                 }
             }
-        else:
-            raise TypeError(data.net)
+        elif data.net == 'tcp' and data.type == 'none':
+            if data.tls == 'tls':
+                tls_settings = {'allowInsecure': True}
+                if data.host:
+                    tls_settings['serverName'] = data.host
 
-        return {
-            'network': data.net,
-            **options
-        }
+                result['security'] = 'tls'
+                result['tlsSettings'] = tls_settings
+        else:
+            raise TypeError(f'unsupported type: {data.net}')
+
+        return result
 
     def make_conf_data(self, data):
         data = AttrDict(data)
