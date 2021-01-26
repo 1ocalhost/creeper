@@ -95,7 +95,7 @@ def mark_duplicate(proxy_items, unique_keys):
     def filter_(item):
         key = []
         for key_name in unique_keys:
-            key.append(item[key_name])
+            key.append(item.get(key_name))
         key = tuple(key)
 
         is_duplicate = key in unique_items

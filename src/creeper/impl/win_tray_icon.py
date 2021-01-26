@@ -128,8 +128,8 @@ class win32gui:
     LONG_PTR = LPARAM
     LRESULT = LONG_PTR
 
-    LPFN_WNDPROC = ctypes.CFUNCTYPE(
-        LRESULT, HANDLE, ctypes.c_uint, WPARAM, LPARAM)
+    WNDPROC_ARGTYPES = HANDLE, ctypes.c_uint, WPARAM, LPARAM
+    LPFN_WNDPROC = ctypes.CFUNCTYPE(LRESULT, *WNDPROC_ARGTYPES)
 
     WNDCLASS = _structure([
             ("style", UINT),
@@ -196,6 +196,9 @@ class win32ex:
         ("biClrUsed", ctypes.wintypes.DWORD),
         ("biClrImportant", ctypes.wintypes.DWORD),
     ])
+
+
+win32gui.DefWindowProc.argtypes = win32gui.WNDPROC_ARGTYPES
 
 
 class _WindowClass:
