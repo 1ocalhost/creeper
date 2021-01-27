@@ -1,0 +1,31 @@
+{
+    "name": "creeper",
+    "version": "0.0.4",
+    "dependencies": [
+        {
+            "path": "data/bin/ssrwin.exe",
+            "sha256": "aaa16af131c884428b5f625c12aede47c331939634bd5bfe5a0b69aecda43364",
+            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/ssrwin.exe"
+        },
+        {
+            "path": "data/bin/v2ray.exe",
+            "sha256": "ca621143512b1674bbb5fc4c0507f459b1077faaabe5667faffc8ae093888135",
+            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/v2ray.exe"
+        },
+        {
+            "path": "data/conf/vendor/cn_ip.txt",
+            "sha256": "6143e2c7f74fe0d128bf19d15a13518729aee28a62af6f62d0a9aa1a70c54ef7",
+            "download_url": "https://github.com/17mon/china_ip_list/raw/master/china_ip_list.txt"
+        },
+        {
+            "path": "build_deps/creeper-installer.exe",
+            "sha256": "ce69cf968dd4ca95ff03fb39ddb15f474763819b5676b7c79116b19078b47ff4",
+            "download_url": "https://github.com/1ocalhost/creeper-installer/releases/latest/download/creeper-installer.exe"
+        },
+        {
+            "path": "build_deps/python.zip",
+            "sha256": "7aadb6fdd430c0e181867d02bd91039e55b27d8a9c18f223001ce3b28f1138a0",
+            "download_url": "https://www.python.org/ftp/python/3.8.7/python-3.8.7-embed-win32.zip"
+        }
+    ]
+}

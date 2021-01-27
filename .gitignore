@@ -1,11 +1,12 @@
 __pycache__/
 
 /out/
-/scripts/*.exe
+/build_deps/
 
 /data/bin/
 /data/tmp/
 /data/log/
-
 /data/conf/user/
 /data/conf/vendor/cn_ip.txt
+
+/TODO

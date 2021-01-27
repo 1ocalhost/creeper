@@ -1,13 +1,11 @@
 {
     "output": "out/app.zip",
     "exclude_folder_path": [".vscode", "src", "scripts"],
-    "exclude_file_path": ["pack.bat"],
-    "check_and_add": [
-        "51bb90b726894adccd5616ad6d18ec50a250e5a9df72b68738fb5401dcde091a:data/conf/vendor/cn_ip.txt",
-        "aaa16af131c884428b5f625c12aede47c331939634bd5bfe5a0b69aecda43364:data/bin/ssrwin.exe",
-        "ca621143512b1674bbb5fc4c0507f459b1077faaabe5667faffc8ae093888135:data/bin/v2ray.exe"
-    ],
+    "exclude_file_path": ["pack.bat", "manifest.json"],
     "include_file_path": [
+        "data/conf/vendor/cn_ip.txt",
+        "data/bin/ssrwin.exe",
+        "data/bin/v2ray.exe",
         ["out/src.zip", "src.pyc"],
         ["scripts/install.py", "install.py"]
     ]

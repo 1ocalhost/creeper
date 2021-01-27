@@ -1,6 +1,5 @@
 import os
 import json
-import hashlib
 import argparse
 from pathlib import Path
 from subprocess import Popen, PIPE
@@ -87,34 +86,6 @@ def git_check_ignore(path_list):
     return list(filter(None, ignored))
 
 
-def file_sha256sum(path):
-    sha256 = hashlib.sha256()
-    with open(path, 'rb') as f:
-        while True:
-            data = f.read(65536)
-            if not data:
-                break
-            sha256.update(data)
-    return sha256.hexdigest()
-
-
-def check_and_add(conf):
-    HASH_LEN = 64
-
-    def gen():
-        for item in conf.check_and_add:
-            try:
-                checksum = item[:HASH_LEN]
-                file_path = item[HASH_LEN + 1:]
-                assert checksum == file_sha256sum(file_path)
-                yield file_path
-            except Exception:
-                print(f'=> while checking: {item}')
-                raise
-
-    return gen()
-
-
 def get_included_items(conf):
     included_items = []
     transform = {}
@@ -141,8 +112,7 @@ def pack(conf):
         zip_items = all_items
 
     include_items, transform = get_included_items(conf)
-    extra_added = include_items + list(check_and_add(conf))
-    zip_items = set(zip_items) | set(extra_added)
+    zip_items = set(zip_items) | set(include_items)
     zip_items = list(zip_items)
     zip_items.sort()
 
@@ -189,7 +159,6 @@ def read_conf():
         "exclude_folder_name": [],
         "exclude_file_path": [],
         "exclude_file_name": [],
-        "check_and_add": ["<sha256>:path/file"],
         "include_file_path": [
             "path/file",
             ["path", "transformed_path"]
@@ -232,7 +201,7 @@ def main():
             conf[key] = True
 
     for key in EXCLUDE_FILE_KEYS + \
-            ['check_and_add', 'include_file_path']:
+            ['include_file_path']:
         if key not in conf:
             conf[key] = []
 
