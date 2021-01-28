@@ -77,11 +77,17 @@ class win32gui:
     NIM_ADD = 0
     NIM_MODIFY = 1
     NIM_DELETE = 2
+    NIM_SETVERSION = 4
     NIF_MESSAGE = 1
     NIF_ICON = 2
     NIF_TIP = 4
     NIF_INFO = 16
     SZTIP_MAX_LENGTH = 128
+    NOTIFYICON_VERSION = 3
+    NOTIFYICON_VERSION_4 = 4
+
+    # so we can get coordinates from mouse event
+    APP_NOTIFYICON_VER = NOTIFYICON_VERSION_4
 
     _kernel32 = ctypes.windll.kernel32
     _user32 = ctypes.windll.user32
@@ -290,12 +296,19 @@ class _TrayIcon:
         if self._notify_id:
             message = win32gui.NIM_MODIFY
         else:
+            self._set_verison(win32gui.APP_NOTIFYICON_VER)
             message = win32gui.NIM_ADD
+            types_flag |= win32gui.NIF_MESSAGE
 
         self._notify_id = (
-            self._hwnd, 0, win32gui.NIF_MESSAGE | types_flag,
+            self._hwnd, 0, types_flag,
             self.WM_SHELL_NOTIFY, hicon, text_array)
+
         return win32gui.Shell_NotifyIcon(message, self._notify_id)
+
+    def _set_verison(self, ver):
+        nid = self._hwnd, 0, 0, 0, None, '', 0, 0, '', ver
+        win32gui.Shell_NotifyIcon(win32gui.NIM_SETVERSION, nid)
 
     def sys_notify(self, title, msg, type_='info'):
         if not self._notify_id:
@@ -470,12 +483,20 @@ class _TrayIconMenuHandler:
             win32gui.EnableMenuItem(
                 self._menu_gui, id_, win32con.MF_BYCOMMAND | flag)
 
-    def _show_menu(self, hwnd):
+    def _get_pos_from_wparam(self, wparam):
+        use_v4 = win32gui.APP_NOTIFYICON_VER == win32gui.NOTIFYICON_VERSION_4
+        if use_v4 and wparam:
+            x = wparam & 0xFFFF
+            y = (wparam >> 16) & 0xFFFF
+            return SimpleNamespace(x=x, y=y)
+        return win32api.GetCursorPos()
+
+    def _show_menu(self, hwnd, wparam):
+        pos = self._get_pos_from_wparam(wparam)
         if self._menu_gui is None:
             self._create_menu()
 
         self._update_menu()
-        pos = win32api.GetCursorPos()
         win32gui.SetForegroundWindow(hwnd)
         win32gui.TrackPopupMenu(
             self._menu_gui, None, pos.x, pos.y, None, hwnd, None)
@@ -491,7 +512,7 @@ class _TrayIconMenuHandler:
             if self._is_magic_command():
                 self._tray_icon.on_magic_command()
             else:
-                self._show_menu(hwnd)
+                self._show_menu(hwnd, wparam)
 
     def _on_command(self, hwnd, wparam, lparam):
         menu_id = win32api.LOWORD(wparam)
