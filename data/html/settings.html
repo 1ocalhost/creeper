@@ -113,7 +113,7 @@
       }
 
       .server-list table {
-        width: max-content;
+        width: 100%;
       }
 
       .ctrl-panel {
@@ -127,6 +127,15 @@
       .ctrl-panel .separator {
         border-top: 1px dashed #5a5a5a78;
         margin: 10px 0;
+      }
+
+      .version {
+        text-align: center;
+      }
+
+      .version a {
+        color: #555f94;
+        text-shadow: 0 0 8px #bfbfbf80;
       }
 
       .extra-info {
@@ -159,6 +168,7 @@
         border-radius: 3px;
         color: #2c8671;
         padding: 0px 4px;
+        margin-right: 2px;
       }
 
     </style>
@@ -167,6 +177,10 @@
   <body>
     <div id="page-content">
       <div class="ctrl-panel card">
+        <div class="version">
+          <a>{{versionText}}</a>
+        </div>
+        <div class="separator"></div>
         <label>
           <input
             type="checkbox"
@@ -229,6 +243,10 @@
       ['actived', '50, 220, 0'],
       ['testing', '255, 235, 0'],
     ]));
+
+    function capitalizeFirstLetter(string) {
+      return string.charAt(0).toUpperCase() + string.slice(1);
+    }
 
     function timeDifference(current, previous) {
       const msPerSecond = 1000;
@@ -529,6 +547,7 @@
     new Vue({
       el: '#page-content',
       data: {
+        version: null,
         speed: {},
         highestSpeed: 0,
         allowFromLAN: false,
@@ -537,6 +556,8 @@
         activedServer: null,
       },
       mounted() {
+        fetchJSON('/version.json', data => this.version = data);
+
         fetchJSON('/feed.json', data => {
           this.feedList = this.addMetaDataToFeedList(data);
         })
@@ -547,6 +568,17 @@
         fetchJSON('/api/token', data => this.token = data.token)
           .then(this.loadUserSetting)
         ;
+      },
+      computed: {
+        versionText() {
+          if (!this.version) {
+            return null;
+          }
+
+          const v = this.version;
+          const name = capitalizeFirstLetter(v.name);
+          return `${name} ${v.verison} (${v.build})`;
+        },
       },
       methods: {
         async apiPostJSONCallback(url, obj, callback) {

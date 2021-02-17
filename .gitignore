@@ -8,5 +8,6 @@ __pycache__/
 /data/log/
 /data/conf/user/
 /data/conf/vendor/cn_ip.txt
+/data/html/version.json
 
 /TODO

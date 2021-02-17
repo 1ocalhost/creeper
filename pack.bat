@@ -14,7 +14,7 @@ cd build_deps
 creeper-installer.exe push python.zip ../out/installer.py.exe || call :_exit
 
 cd ../out
-tpl_eval.py "installer.py.exe push app.zip {out_name}" || call :_exit
+pack.py || call :_exit
 
 @echo off
 echo.
