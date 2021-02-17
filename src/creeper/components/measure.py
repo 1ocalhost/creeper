@@ -220,7 +220,7 @@ def update_speed_cache(server_uid, result):
         speed_data = {}
 
     speed_data[server_uid] = new_item
-    new_content = json.dumps(speed_data)
+    new_content = json.dumps(speed_data, indent=4)
 
     with open(speed_file_path, 'w') as f:
         f.write(new_content)

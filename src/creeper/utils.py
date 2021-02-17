@@ -1,4 +1,5 @@
 import time
+import json
 import asyncio
 import traceback
 import os.path
@@ -100,6 +101,11 @@ def check_singleton():
         os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_RDWR)
     except OSError:
         raise
+
+
+def write_json_file(file_, obj):
+    with open(file_, 'w') as f:
+        f.write(json.dumps(obj, indent=4))
 
 
 class AttrDict(dict):

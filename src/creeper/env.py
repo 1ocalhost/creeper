@@ -25,8 +25,8 @@ def _load_conf(conf_file, allow_not_found):
         with open(conf_file) as f:
             data = f.read(1024 * 1024)
             return json.loads(data)
-    except FileNotFoundError:
-        if allow_not_found:
+    except Exception as e:
+        if allow_not_found and isinstance(e, FileNotFoundError):
             return {}
         raise
 
@@ -50,7 +50,7 @@ class ConfMapping(SimpleNamespace):
         new_conf[key] = value
 
         with open(self.filepath, 'w') as f:
-            f.write(json.dumps(new_conf))
+            f.write(json.dumps(new_conf, indent=4))
         super().__setattr__('conf', new_conf)
 
 
@@ -92,6 +92,6 @@ FILE_CUR_NODE_JSON = 'cur_node.json'
 
 APP_CONF = _load_conf(PATH_APP_CONF, False)
 _rewrite_main_port(APP_CONF)
-USER_CONF = ConfMapping(CONF_DIR / 'user_conf.json')
+USER_CONF = ConfMapping(CONF_DIR / 'settings.json')
 
 CONF_DIR.mkdir(parents=True, exist_ok=True)

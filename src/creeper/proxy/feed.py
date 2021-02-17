@@ -1,4 +1,5 @@
 import re
+import uuid
 import time
 import json
 import base64
@@ -6,9 +7,9 @@ import asyncio
 import urllib.request
 from urllib.parse import parse_qsl, urlsplit
 
-from creeper.env import USER_CONF, CONF_DIR, FILE_FEED_JSON
+from creeper.env import CONF_DIR, FILE_FEED_JSON
 from creeper.log import logger
-from creeper.utils import readable_exc, _MiB
+from creeper.utils import _MiB, readable_exc, write_json_file
 
 FEED_FILE_PATH = CONF_DIR / FILE_FEED_JSON
 
@@ -101,8 +102,8 @@ def mark_duplicate(proxy_items, unique_keys):
         is_duplicate = key in unique_items
         unique_items.add(key)
         return {
-            **item,
             'duplicate': is_duplicate,
+            'conf': item,
         }
 
     return list(map(filter_, proxy_items))
@@ -127,40 +128,32 @@ def parse_feed_data(feed):
         raise ValueError(f'unsupported scheme: {scheme}')
 
     proxy_items = mark_duplicate(proxy_items, unique_keys)
+    return scheme, proxy_items
+
+
+def make_feed_data(url, content=None):
+    if content is None:
+        scheme, proxy_items = None, []
+    else:
+        scheme, proxy_items = parse_feed_data(content)
+
+    update = time.time() if scheme else None
     return {
+        'uid': str(uuid.uuid4()),
+        'url': url,
+        'update': update,
         'scheme': scheme,
         'proxies': proxy_items
     }
 
 
-class NoFeedURL(Exception):
-    pass
-
-
-async def fetch_feed():
-    if not USER_CONF.feed_url:
-        raise NoFeedURL()
-
-    content = await fetch_url_content(USER_CONF.feed_url)
+async def fetch_feed(feed_url):
+    content = await fetch_url_content(feed_url)
     try:
-        return parse_feed_data(content)
+        return make_feed_data(feed_url, content)
     except Exception as exc:
         logger.error(readable_exc(exc))
         raise FeedParseError()
-
-
-async def update_feed():
-    feed = await fetch_feed()
-    new_feed = {
-        'update': time.time(),
-        'servers': feed,
-    }
-
-    feed_json = json.dumps(new_feed)
-    with open(FEED_FILE_PATH, 'w') as file:
-        file.write(feed_json)
-
-    return new_feed
 
 
 def read_feed():
@@ -168,6 +161,74 @@ def read_feed():
         with open(FEED_FILE_PATH) as file:
             data = file.read(_MiB)
         return json.loads(data)
-    except Exception as exc:
+    except FileNotFoundError as exc:
         logger.warning(readable_exc(exc))
+        return []
+
+
+def write_feed(feed_list):
+    write_json_file(FEED_FILE_PATH, feed_list)
+
+
+def find_feed_by(feed_list, key, value):
+    return (x for x in feed_list if x[key] == value)
+
+
+def feed_by_uid(feed_list, uid):
+    return find_feed_by(feed_list, 'uid', uid)
+
+
+def feed_by_url(feed_list, url):
+    return find_feed_by(feed_list, 'url', url)
+
+
+def add_feed(url):
+    feed_list = read_feed()
+    existing = next(feed_by_url(feed_list, url), None)
+    if existing:
         return None
+
+    new_feed = make_feed_data(url)
+    feed_list.append(new_feed)
+    write_feed(feed_list)
+    return new_feed
+
+
+def delete_feed(uid):
+    feed_list = read_feed()
+    existing = False
+
+    for item in feed_by_uid(feed_list, uid):
+        feed_list.remove(item)
+        existing = True
+
+    if existing:
+        write_feed(feed_list)
+
+
+def edit_feed(uid, url):
+    feed_list = read_feed()
+    existing = False
+
+    for item in feed_by_uid(feed_list, uid):
+        item['url'] = url
+        existing = True
+        break
+
+    if not existing:
+        raise Exception('feed not found')
+
+    write_feed(feed_list)
+
+
+async def update_feed(uid):
+    feed_list = read_feed()
+    feed_item = next(feed_by_uid(feed_list, uid))
+
+    feed = await fetch_feed(feed_item['url'])
+    feed['uid'] = uid
+
+    feed_item.clear()
+    feed_item.update(**feed)
+    write_feed(feed_list)
+    return feed

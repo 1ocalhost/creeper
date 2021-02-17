@@ -8,7 +8,8 @@ from subprocess import call, Popen, PIPE, CREATE_NO_WINDOW
 
 from creeper.env import CONF_DIR, TMP_DIR, BIN_DIR, FILE_CUR_NODE_JSON
 from creeper.impl.win_utils import get_win_machine_guid
-from creeper.utils import split_no_empty, run_async, AttrDict
+from creeper.utils import AttrDict, \
+    split_no_empty, run_async, write_json_file
 
 POPEN_GENERAL_PARAM = dict(
     stdout=PIPE, stderr=PIPE, creationflags=CREATE_NO_WINDOW
@@ -100,7 +101,7 @@ class BackendUtilitySSR(BackendUtility):
 
     def make_conf_data(self, data):
         return {
-            **data,
+            **data.conf,
             'timeout': 300,
         }
 
@@ -148,7 +149,7 @@ class BackendUtilityV2Ray(BackendUtility):
         return result
 
     def make_conf_data(self, data):
-        data = AttrDict(data)
+        data = AttrDict(data.conf)
         user = {
             'id': data.id,
             'alterId': data.aid,
@@ -212,14 +213,11 @@ class BackendUtilitys:
         for util in self.utilitys.values():
             util.conf_file.unlink(True)
 
-        with open(CONF_DIR / FILE_CUR_NODE_JSON, 'w') as f:
-            f.write(json.dumps(conf))
-
+        write_json_file(CONF_DIR / FILE_CUR_NODE_JSON, conf)
         for type_, util in self.utilitys.items():
             if type_ == conf.type:
-                conf_data = util.make_conf_data(conf.data)
-                with open(util.conf_file, 'w') as f:
-                    f.write(json.dumps(conf_data))
+                conf_data = util.make_conf_data(conf)
+                write_json_file(util.conf_file, conf_data)
                 break
 
     async def restart(self, backend, conf):
@@ -274,10 +272,10 @@ class Backend:
         return
 
     def create_tmp_conf_file(self, conf):
-        conf_data = self.backend_util.make_conf_data(conf.data)
+        conf_data = self.backend_util.make_conf_data(conf)
         fd, path = mkstemp('.json')
         with os.fdopen(fd, 'w') as fp:
-            fp.write(json.dumps(conf_data))
+            fp.write(json.dumps(conf_data, indent=4))
 
         self.tmp_conf_file = path
         return path

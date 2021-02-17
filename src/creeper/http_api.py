@@ -16,7 +16,7 @@ from creeper.log import logger
 from creeper.env import IS_DEBUG, CONF_DIR, HTML_DIR, USER_CONF, \
     FILE_FEED_JSON, FILE_SPEED_JSON, FILE_CUR_NODE_JSON
 from creeper.utils import write_drain, fmt_exc, readable_exc, AttrDict
-from creeper.proxy.feed import update_feed
+from creeper.proxy.feed import add_feed, delete_feed, edit_feed, update_feed
 from creeper.proxy.backend import backend_utilitys
 from creeper.components import statistic
 from creeper.components.measure import test_backend_speed
@@ -291,11 +291,14 @@ class ApiHandler:
         self.route('GET ', self.pac_path, self.get_pac_script)
         self.route('GET ', '/api/token', self.api_token)
         self.route('GET ', '/api/stream', self.api_stream)
-        self.route('POST', '/api/fetch_feed', self.api_fetch_feed)
+        self.route('POST', '/api/add_feed', self.api_add_feed)
+        self.route('POST', '/api/delete_feed', self.api_delete_feed)
+        self.route('POST', '/api/edit_feed', self.api_edit_feed)
+        self.route('POST', '/api/update_feed', self.api_update_feed)
         self.route('POST', '/api/test_speed', self.api_test_speed)
         self.route('POST', '/api/switch_node', self.api_switch_node)
-        self.route('GET ', '/api/user_conf', self.api_get_user_conf)
-        self.route('POST', '/api/set_value', self.api_set_value)
+        self.route('GET ', '/api/user_settings', self.api_get_settings)
+        self.route('POST', '/api/user_settings', self.api_set_settings)
         self.route('GET ', '/api/diagnosis', self.api_diagnosis)
 
     def route(self, method, path, func):
@@ -317,8 +320,31 @@ class ApiHandler:
     async def api_stream(self, req):
         await route_stream(req.url.query, req.headers, req.writer)
 
-    async def api_fetch_feed(self, req):
-        new_feed = await update_feed()
+    async def api_add_feed(self, req):
+        conf = await read_json_body(req)
+        result = add_feed(conf['url'])
+        if result is None:
+            existing, feed = True, {}
+        else:
+            existing, feed = False, result
+        await req.result_ok({
+            'existing': existing,
+            'feed': feed,
+        })
+
+    async def api_delete_feed(self, req):
+        conf = await read_json_body(req)
+        delete_feed(conf['uid'])
+        await req.result_ok(conf)
+
+    async def api_edit_feed(self, req):
+        conf = await read_json_body(req)
+        edit_feed(conf['uid'], conf['url'])
+        await req.result_ok(conf)
+
+    async def api_update_feed(self, req):
+        conf = await read_json_body(req)
+        new_feed = await update_feed(conf['uid'])
         await req.result_ok(new_feed)
 
     async def api_test_speed(self, req):
@@ -329,14 +355,14 @@ class ApiHandler:
     async def api_switch_node(self, req):
         conf = await read_json_body(req)
         await backend_utilitys.restart(self.app.backend, AttrDict(conf))
-        await req.result_ok({})
+        await req.result_ok(conf)
 
-    async def api_get_user_conf(self, req):
-        keys = ['allow_lan', 'feed_url']
+    async def api_get_settings(self, req):
+        keys = ['allow_lan']
         result = [(key, USER_CONF[key]) for key in keys]
         await req.result_ok(dict(result))
 
-    async def api_set_value(self, req):
+    async def api_set_settings(self, req):
         payload = await read_json_body(req)
         req_key = payload['key']
         req_value = payload['value']
@@ -344,11 +370,9 @@ class ApiHandler:
         if req_key == 'allow_lan':
             USER_CONF.allow_lan = bool(req_value)
             self.app.update_state_icon()
-        elif req_key == 'feed_url':
-            USER_CONF.feed_url = str(req_value)
         else:
             raise ValueError(f'bad key name: {req_key}')
-        await req.result_ok({})
+        await req.result_ok(payload)
 
     async def api_diagnosis(self, req):
         writer = ChunkedWriter(req)

@@ -21,8 +21,14 @@
         background: #f9f9f9;
       }
 
+      html, body {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
       #page-content {
-        width: max-content;
+        width: 100%;
         margin: 10px auto;
       }
 
@@ -34,8 +40,6 @@
 
       tr {
         background: #d8e3e6;
-        border-bottom: 1px solid #FFF;
-        margin-bottom: 5px;
       }
 
       tr:nth-child(even) {
@@ -47,14 +51,28 @@
         padding: 4px 10px;
       }
 
+      .card {
+        border: 1px solid #8a97a0;
+        border-radius: 3px;
+        box-shadow: rgba(0, 0, 0, 0.05) 0px 1px 2px 0px,
+          rgba(0, 0, 0, 0.05) 0px 1px 4px 0px,
+          rgba(0, 0, 0, 0.05) 0px 2px 8px 0px;
+      }
+
+      .feed-info {
+        background-color: #e8eef3;
+        padding: 5px;
+        margin-bottom: 5px;
+      }
+
       .feed-updated {
         display: flex;
         flex-direction: column-reverse;
       }
 
-      .feed-updated >a {
-        margin: 0 5px;
-        color: #000000b3;;
+      .feed-url-wrapper a,
+      .feed-url-wrapper input {
+        color: #333333;
         font-size: 80%;
       }
 
@@ -66,15 +84,27 @@
       .feed-url-wrapper >input {
         flex: 1;
         outline: none;
-        color: #3c3c3c;
+        border: none;
+        background: transparent;
+        text-overflow: ellipsis;
       }
 
-      .feed-url-wrapper >button {
-        margin: 0 5px;
+      .feed-op-buttons {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 5px;
+      }
+
+      .server-lists {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
       }
 
       .server-list {
         display: inline-block;
+        margin: 10px;
       }
 
       .server-list tr.duplicate,
@@ -82,26 +112,21 @@
         color: #2d2d2d99;
       }
 
-      .server-list-footer {
-        background: #8a97a0;
-        height: 2px;
+      .server-list table {
+        width: max-content;
       }
 
-      .right-panel {
-        float: right;
-        padding: 0 5px;
-        min-width: 200px;
+      .ctrl-panel {
+        width: max-content;
+        margin: 5px auto;
+        background-color: #e8eef3;
+        border: 1px solid #5a5a5a78;
+        padding: 10px 20px;
       }
 
-      .right-panel div >span {
-        display: block;
-        margin: 5px 0;
-      }
-
-      .right-panel div {
-        border: 1px #5a5a5a78 dashed;
-        margin-top: 20px;
-        padding: 5px 10px;
+      .ctrl-panel .separator {
+        border-top: 1px dashed #5a5a5a78;
+        margin: 10px 0;
       }
 
       .extra-info {
@@ -125,35 +150,15 @@
         user-select: none;
       }
 
-      tr.duplicate {
-        background-image: linear-gradient(
-          -45deg,
-          rgba(204, 204, 204, 0.5) 12.5%,
-          #0000 12.5%,
-          #0000 50%,
-          rgba(204, 204, 204, 0.5) 50%,
-          rgba(204, 204, 204, 0.5) 62.5%,
-          #0000 62.5%,
-          #0000 100%);
-        background-size: 8px 8px;
-      }
-
-      tr.actived-server {
-        background-image: linear-gradient(
-          -45deg,
-          rgba(50, 220, 0, 0.5) 12.5%,
-          #0000 12.5%,
-          #0000 50%,
-          rgba(50, 220, 0, 0.5) 50%,
-          rgba(50, 220, 0, 0.5) 62.5%,
-          #0000 62.5%,
-          #0000 100%
-        );
-        background-size: 8px 8px;
-      }
-
-      tr.actived-server td:first-child a:first-child::after {
+      tr.actived td:first-child a:first-child::after {
         content: " \2705\FE0F";
+      }
+
+      a.text-tag {
+        background: #b5d4ca;
+        border-radius: 3px;
+        color: #2c8671;
+        padding: 0px 4px;
       }
 
     </style>
@@ -161,96 +166,83 @@
 
   <body>
     <div id="page-content">
-      <div class="server-list">
-        <div class="feed-url-wrapper">
-          <input type="text" v-model="feedUrl" :disabled="!feedUrl" readonly />
-          <button @click="editFeedUrl()">Edit</button>
-          <div class="feed-updated">
-            <a>{{serversUpdateTip}}</a>
-          </div>
-        </div>
-        <table :class="{'core-content-only': !showExtraInfo}">
-          <thead>
-            <tr>
-              <th>Server</th>
-              <th>Speed</th>
-              <th>Operate</th>
-            </tr>
-          </thead>
-          <tr v-for="(item, index) in servers"
-            :class="serverItemClass(item, index)"
-            v-show="showDuplicate || !item.duplicate">
-            <td>
-              <a>{{item.remark}}</a><br />
-              <a class="extra-info">{{itemUID(item)}}</a>
-            </td>
-            <td>
-              <a :title="item.speed?.title" :style="speedStyle(item)">
-                {{item.speed?.result}}
-              </a><br />
-              <a class="extra-info">{{item.speed?.update}}</a>
-            </td>
-            <td>
-              <span v-if="canTestSpeed(item, index)">
-                <button @click="testOne(item, index)">Test</button>
-                <button @click="switchNode(item)">Switch</button>
-              </span>
-            </td>
-          </tr>
-        </table>
-        <div class="server-list-footer">
-        </div>
+      <div class="ctrl-panel card">
+        <label>
+          <input
+            type="checkbox"
+            v-model="allowFromLAN"
+            :disabled="allowFromLANQuerying"
+            @change="setAllowFromLAN($event)"
+          />
+          Allow from LAN
+        </label>
+        <div class="separator"></div>
+        <button @click="openMonitor">Open Monitor</button>
+        <button @click="addFeed">Add Feed</button>
       </div>
-      <div class="right-panel">
-        <div>
-          <span>
-            <input type="checkbox" v-model="showDuplicate" id="show-duplicate" :disabled="!duplicateNumber" />
-            <label for="show-duplicate" :disabled="!duplicateNumber">Show Duplicate ({{duplicateNumber}})</label>
-          </span>
-          <span>
-            <input type="checkbox" v-model="showExtraInfo" id="show-extra-info" />
-            <label for="show-extra-info">Show Extra Info</label>
-          </span>
-          <span>
-            <button :disabled="!feedUrl || isUpdatingFeed" @click="updateFeed">
-              {{isUpdatingFeed ? 'Updating Feed' : 'Update Feed'}}
-            </button>
-          </span>
-          <span>
-            <select v-model="testSpeedSkipRecentSelected">
-              <option v-for="option in testSpeedSkipRecentOptions" v-bind:value="option.value">
-                {{ option.text }}
-              </option>
-            </select>
-            <button @click="testFeed">
-              {{isTestingSpeed ? 'Stop Test' : 'Test Speed'}}
-            </button>
-          </span>
-        </div>
-        <div>
-          <span>
-            <input type="checkbox" v-model="allowFromLAN" id="allow-from-lan"
-              :disabled="allowFromLANQuerying" @change="setAllowFromLAN($event)" />
-            <label for="allow-from-lan">Allow from LAN</label>
-          </span>
-          <span>
-            <button @click="openMonitor">Open Monitor</button>
-          </span>
-        </div>
+      <div class="server-lists">
+        <server-list
+          v-for="item in feedList"
+          :feed-data="item"
+          @switch-node="switchNode"
+          @test-node="testNode"
+          @edit-feed="editFeed"
+          @delete-feed="deleteFeed"
+          @update-feed="updateFeed"
+        />
       </div>
     </div>
   </body>
 
   <script>
-    function timeDifference(current, previous) {
-      var msPerMinute = 60 * 1000;
-      var msPerHour = msPerMinute * 60;
-      var msPerDay = msPerHour * 24;
-      var msPerMonth = msPerDay * 30;
-      var msPerYear = msPerDay * 365;
+    function addStyle(styleString) {
+      const style = document.createElement('style');
+      style.textContent = styleString;
+      document.head.append(style);
+    }
 
-      var elapsed = current - previous;
-      if (elapsed < msPerMinute) {
+    function makeColoredMaskStyles(items) {
+      const makeStyle = (name, rgb) => `
+        tr.${name} {
+          background-image: linear-gradient(
+            -45deg,
+            rgba(${rgb}, 0.5) 12.5%,
+            #0000 12.5%,
+            #0000 50%,
+            rgba(${rgb}, 0.5) 50%,
+            rgba(${rgb}, 0.5) 62.5%,
+            #0000 62.5%,
+            #0000 100%
+          );
+          background-size: 8px 8px;
+        }`;
+
+      let result = '';
+      items.forEach(args => {
+        result += makeStyle(...args);
+      });
+      return result;
+    }
+
+    addStyle(makeColoredMaskStyles([
+      ['duplicate', '204, 204, 204'],
+      ['actived', '50, 220, 0'],
+      ['testing', '255, 235, 0'],
+    ]));
+
+    function timeDifference(current, previous) {
+      const msPerSecond = 1000;
+      const msPerMinute = msPerSecond * 60;
+      const msPerHour = msPerMinute * 60;
+      const msPerDay = msPerHour * 24;
+      const msPerMonth = msPerDay * 30;
+      const msPerYear = msPerDay * 365;
+
+      const elapsed = current - previous;
+      if (elapsed < msPerSecond) {
+        return 'just now';
+      }
+      else if (elapsed < msPerMinute) {
         return Math.round(elapsed/1000) + ' seconds ago';
       }
       else if (elapsed < msPerHour) {
@@ -270,6 +262,18 @@
       }
     }
 
+    function timeDiffFromNow(timestamp) {
+      return timeDifference(new Date(), timestamp * 1000);
+    }
+
+    function truncateString(str, num) {
+      if (str.length > num) {
+        return str.slice(0, num) + "...";
+      } else {
+        return str;
+      }
+    }
+
     function isValidHttpUrl(strUrl) {
       let url;
       try {
@@ -280,101 +284,164 @@
       return ['http:', 'https:'].includes(url.protocol);
     }
 
-    let vue = new Vue({
-      el: '#page-content',
-      data: {
-        token: null,
-        feedUrl: '',
-        serversType: null,
-        servers: [],
-        serversUpdate: null,
-        activedServer: null,
-        showDuplicate: false,
-        showExtraInfo: false,
-        allowFromLAN: false,
-        allowFromLANQuerying: true,
-        testSpeedSkipRecentSelected: 0,
-        testSpeedSkipRecentOptions: [
-          { text: 'test all', value: 0 },
-          { text: 'skip in 2min', value: 2 * 60 },
-          { text: 'skip in 10min', value: 10 * 60 },
-          { text: 'skip in 30min', value: 30 * 60 },
-          { text: 'skip in 1hour', value: 60 * 60 },
-          { text: 'skip in 2hour', value: 2 * 60 * 60 },
-          { text: 'skip in 5hour', value: 5 * 60 * 60 },
-        ],
-        isUpdatingFeed: false,
-        isTestingSpeed: false,
+    function fetchJSON(url, callback) {
+      return fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data.error == undefined) {
+            callback(data);
+          }
+        })
+    }
+
+    function addShadowProp(obj, name, value) {
+      delete obj[name];
+      Object.defineProperty(obj, name, {value, configurable: true});
+    }
+
+    function promptURL(msg, url) {
+      msgText = msg || 'URL';
+      urlText = url || '';
+      let inputedURL = prompt(msgText, urlText);
+      if (inputedURL === null) {
+        return null;
+      }
+
+      inputedURL = inputedURL.trim();
+      if (!isValidHttpUrl(inputedURL)) {
+        alert('Invalid URL: ' + (inputedURL || '<empty>'));
+        return null;
+      }
+
+      return inputedURL;
+    }
+
+    function isSpecialItem(item, index) {
+      if (index >= 5) {
+        return false;
+      }
+
+      const port = item.conf.server_port;
+      return port < 10 || [10086].includes(port);
+    }
+
+    Vue.component('server-list', {
+      template: `
+        <div class="server-list">
+          <div class="feed-info card">
+            <div class="feed-url-wrapper">
+              <a v-if="feedData.scheme" class="text-tag">{{feedData.scheme}}</a>
+              <input type="text" v-model="feedData.url" :title="feedData.url" readonly />
+              <div class="feed-updated">
+                <a>{{serversUpdateTip}}</a>
+              </div>
+            </div>
+            <div class="feed-op-buttons">
+              <div style="margin-right: 15px;">
+                <label :disabled="!duplicateNumber">
+                  <input type="checkbox" v-model="showDuplicate" :disabled="!duplicateNumber" />
+                    Duplicates ({{duplicateNumber}})
+                </label>
+                <label><input type="checkbox" v-model="showExtraInfo" />Details</label>
+              </div>
+              <div>
+                <button @click="editFeedUrl()">Edit</button>
+                <button @click="$emit('delete-feed', feedData)" style="color: #e80c0c;">Remove</button>
+                <button :disabled="!feedData.url || isUpdatingFeed" @click="emitUpdateFeed()">
+                  {{isUpdatingFeed ? 'Updating' : 'Update'}}
+                </button>
+                <button @click="testAllNodesOrStop()">
+                  {{isTestingSpeed ? 'Stop Test' : 'Test'}}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div v-if="feedData.proxies.length" class="card">
+            <table :class="{'core-content-only': !showExtraInfo}">
+              <thead>
+                <tr>
+                  <th>Server</th>
+                  <th>Speed</th>
+                  <th>Operation</th>
+                </tr>
+              </thead>
+              <tr v-for="(item, index) in feedData.proxies"
+                :class="serverItemClass(item)"
+                v-show="showDuplicate || !item.duplicate">
+                <td>
+                  <a>{{item.conf.remark}}</a><br />
+                  <a class="extra-info">{{item.uid}}</a>
+                </td>
+                <td>
+                  <a :title="getNodeSpeed(item)?.title" :style="speedStyle(item)">
+                    {{speedText(item)}}
+                  </a><br />
+                  <a class="extra-info">{{getNodeSpeed(item)?.update}}</a>
+                </td>
+                <td>
+                  <span v-if="canTestSpeed(item, index)">
+                    <button @click="emitTestNode(item)">Test</button>
+                    <button @click="$emit('switch-node', item)">Switch</button>
+                  </span>
+                </td>
+              </tr>
+            </table>
+          </div>
+          </div>
+        </div>
+      `,
+      props: ['feedData'],
+      data() {
+        return {
+          showDuplicate: false,
+          showExtraInfo: false,
+          isUpdatingFeed: false,
+          isTestingSpeed: false,
+        }
       },
       computed: {
         duplicateNumber() {
-          return this.servers.filter(item => item.duplicate).length;
+          return this.feedData.proxies.filter(
+            item => item.duplicate
+          ).length;
         },
         serversUpdateTip() {
-          if (this.serversUpdate) {
-            return `(updated ${this.serversUpdate})`;
-          } else {
-            return '';
+          const updatedTime = this.feedData.update;
+          if (updatedTime) {
+            const interval = timeDiffFromNow(updatedTime);
+            return `(updated ${interval})`;
           }
-        }
+          return '';
+        },
       },
       methods: {
-        editFeedUrl() {
-          const url = prompt('Feed URL', this.feedUrl);
-          if (url !== null) {
-            url_ = url.trim();
-            if (url_ && !isValidHttpUrl(url_)) {
-              alert('Invalid URL: ' + url_);
+        async editFeedUrl() {
+          const feedUrl = this.feedData.url;
+          const url = promptURL('Edit Feed URL', feedUrl);
+          if (url === null) {
+            return;
+          }
+
+          this.$emit('edit-feed', this.feedData.uid, url, (result) => {
+            if (result !== null) {
+              this.feedData.url = url;
             }
-
-            (async () => {
-              conf = {key: 'feed_url', value: url};
-              result = await apiPostJSON('/api/set_value', conf);
-              if (result.error === undefined) {
-                this.feedUrl = url_;
-                console.log('feedUrl updated: ' + this.feedUrl);
-              }
-            })();
-          }
+          });
         },
-        itemConf(item) {
-          let data = {...item};
-          delete data['duplicate'];
+        serverItemClass(item) {
+          if (item.duplicate) {
+            return {duplicate: true};
+          }
+
+          const activedServer = this.$parent.activedServer;
+          const actived = (activedServer && item.uid === activedServer);
           return {
-            type: this.serversType,
-            uid: this.itemUID(item),
-            data: item,
-          }
-        },
-        itemUID(item) {
-          let extra = '';
-          if (this.serversType === 'vmess') {
-            extra = ` - ${item.host}${item.path}`;
-          }
-
-          return this.serverAddr(item) + extra;
-        },
-        serverAddr(item) {
-          return item.server + ':' + item.server_port;
-        },
-        serverItemClass(item, index) {
-          const duplicate = item.duplicate;
-          let actived = (JSON.stringify(item) === this.activedServer);
-          return {
-            duplicate,
-            'actived-server': actived,
-          }
-        },
-        isSpecialItem(item, index) {
-          if (index >= 5) {
-            return false;
-          }
-
-          const port = item.server_port;
-          return port < 10 || [10086].includes(port);
+            actived,
+            testing: item.testing,
+          };
         },
         canTestSpeed(item, index) {
-          if (item.server_port === undefined) {
+          if (item.conf.server_port === undefined) {
             return false;
           }
 
@@ -382,39 +449,31 @@
             return false;
           }
 
-          if (this.isSpecialItem(item, index)) {
+          if (isSpecialItem(item, index)) {
             return false;
           }
 
           return true;
         },
-        getServerSpeed(item) {
-          result = item.speed?.result;
-          if (!result) {
-            return null;
+        getNodeSpeed(item) {
+          if (item.testing) {
+            return {
+              update: '...',
+              result: '\uD83C\uDFCD\uFE0F Testing...',
+            };
           }
-
-          const words = result.match(/([\d\.]+)MiB\/s\(/);
-          if (words === null) {
-            return null;
-          }
-
-          return parseFloat(words[1]);
+          return this.$parent.speed[item.uid];
         },
-        updateHighestSpeed() {
-          let allSpeed = [];
-          this.servers.forEach(server => {
-            const speed = this.getServerSpeed(server);
-            if (speed !== null) {
-              allSpeed.push(speed);
-            }
-          });
-
-          this.highestSpeed = Math.max(...allSpeed);
+        speedText(item) {
+          if (item.duplicate) {
+            return;
+          }
+          return this.getNodeSpeed(item)?.result;
         },
         speedStyle(item) {
-          const speed = this.getServerSpeed(item);
-          if (speed === null || !this.highestSpeed) {
+          const highestSpeed = this.$parent.highestSpeed;
+          const speed = this.getNodeSpeed(item)?.speedNum;
+          if (speed === null || speed === undefined || !highestSpeed) {
             return {
               'color': '#c5ae08',
             };
@@ -426,295 +485,324 @@
           let rgb = [];
           for (var i = 0; i < 3; ++i) {
             const colorDiff = colorFast[i] - colorSlow[i];
-            rgb[i] = colorDiff * (speed / this.highestSpeed) + colorSlow[i];
+            rgb[i] = colorDiff * (speed / highestSpeed) + colorSlow[i];
           }
 
           return {
             'color': `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`,
           };
         },
-        updateFeed() {
-          this.isUpdatingFeed = true;
-          doUpdateFeed();
-        },
-        testFeed() {
-          if (!this.isTestingSpeed) {
-            this.isTestingSpeed = true;
-            doTestSpeed();
-          } else {
+        async testAllNodesOrStop() {
+          if (this.isTestingSpeed) {
             this.isTestingSpeed = false;
+            return;
+          }
+
+          this.isTestingSpeed = true;
+          const proxies = this.feedData.proxies;
+          for (const [index, proxy] of proxies.entries()) {
+            if (!this.isTestingSpeed || !this.canTestSpeed(proxy, index)) {
+              continue;
+            }
+            await new Promise(resolve => this.emitTestNode(proxy, resolve));
+          }
+          this.isTestingSpeed = false;
+        },
+        emitTestNode(item, callback) {
+          item.testing = true;
+          this.$emit('test-node', item, () => {
+            item.testing = false;
+            if (callback) {
+              callback();
+            }
+          });
+        },
+        emitUpdateFeed() {
+          this.isUpdatingFeed = true;
+          this.$emit('update-feed', this.feedData.uid, (result) => {
+            this.isUpdatingFeed = false;
+          });
+        },
+      },
+    });
+
+    new Vue({
+      el: '#page-content',
+      data: {
+        speed: {},
+        highestSpeed: 0,
+        allowFromLAN: false,
+        allowFromLANQuerying: true,
+        feedList: [],
+        activedServer: null,
+      },
+      mounted() {
+        fetchJSON('/feed.json', data => {
+          this.feedList = this.addMetaDataToFeedList(data);
+        })
+          .then(this.loadSpeedData)
+          .then(this.loadSelectedProxy)
+        ;
+
+        fetchJSON('/api/token', data => this.token = data.token)
+          .then(this.loadUserSetting)
+        ;
+      },
+      methods: {
+        async apiPostJSONCallback(url, obj, callback) {
+          const apiURL = (url + '?token=' + this.token);
+          return await fetch(apiURL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(obj)
+            })
+            .then(res => {
+                return res.json();
+            })
+            .then(callback)
+          ;
+        },
+        async apiPostJSON(url, obj) {
+          return await this.apiPostJSONCallback(url, obj, data => {
+            if (data.error) {
+              alert(`When call ${url}:\nError: ${data.error}`);
+              return null;
+            } else {
+              return data;
+            }
+          });
+        },
+        async apiPostJSONNoAlert(url, obj) {
+          return await this.apiPostJSONCallback(url, obj, data => data);
+        },
+        makeProxyUID(scheme, proxy) {
+          let extra = '';
+          const conf = proxy.conf;
+          if (scheme === 'vmess') {
+            const host = conf.host || '';
+            const path = conf.path || '';
+            extra = ` - ${host}${path}`;
+          }
+          const serverAddr = conf.server + ':' + conf.server_port;
+          return serverAddr + extra;
+        },
+        adaptPropNames(feedItem) {
+          if (feedItem.scheme === 'vmess') {
+            feedItem.proxies.forEach(server => {
+              const conf = server.conf;
+              addShadowProp(conf, 'remark', conf.ps);
+              addShadowProp(conf, 'server', conf.add);
+              addShadowProp(conf, 'server_port', conf.port);
+            });
           }
         },
-        testOne(item, index) {
-          doTestSpeedItem(index, item);
+        addMetaDataToFeedList(items) {
+          if (!items) {
+            return [];
+          }
+
+          items.forEach(item => {
+            this.adaptPropNames(item);
+            item.proxies.forEach((proxy, i) => {
+              if (isSpecialItem(proxy, i)) {
+                proxy.duplicate = false;
+              }
+
+              proxy.type = item.scheme;
+              proxy.uid = this.makeProxyUID(item.scheme, proxy);
+              proxy.testing = false;
+            });
+          });
+
+          return items;
         },
-        switchNode(item) {
-          doSwitchNode(item);
+        isUIDInFeed(uid) {
+          if (!uid) {
+            return false;
+          }
+
+          for (let i = 0; i < this.feedList.length; ++i) {
+            const item = this.feedList[i].proxies;
+            for (const key in item) {
+              if (item.hasOwnProperty(key)) {
+                if (item[key].uid === uid) {
+                  return true;
+                }
+              }
+            }
+          }
+
+          return false;
         },
-        setAllowFromLAN(event) {
-          doSetAllowFromLAN(event.target.checked);
+        updateHighestSpeed(result) {
+          let highestSpeed = 0;
+          const speedList = result || this.speed;
+
+          Object.entries(speedList).forEach(entry => {
+            const [key, value] = entry;
+            const speed = value?.speedNum;
+            if (speed && this.isUIDInFeed(key)) {
+              if (speed > highestSpeed) {
+                highestSpeed = speed;
+              }
+            }
+          });
+
+          this.highestSpeed = highestSpeed || 99999;
+        },
+        loadSelectedProxy() {
+          fetchJSON('/cur_node.json', data => {
+            this.addMetaDataToFeedList([{
+              scheme: data.type,
+              proxies: [data],
+            }]);
+            this.activedServer = data.uid;
+          });
+        },
+        loadUserSetting() {
+          fetchJSON('/api/user_settings', data => {
+            this.updateLANSetting(data.allow_lan);
+          });
+        },
+        getServerSpeed(speedText) {
+          if (!speedText) {
+            return null;
+          }
+
+          const words = speedText.match(/([\d\.]+)MiB\/s/);
+          if (words === null) {
+            return null;
+          }
+
+          return parseFloat(words[1]);
+        },
+        makeSpeedText(speedItem) {
+          const error = speedItem.error;
+          if (error !== undefined) {
+            let words = error.match(/([^:]*): "(.*)"/);
+            if (words === null) {
+              shortError = truncateString(error, 20);
+              words = [null, shortError, error];
+            }
+
+            return {
+              update: 'failed',
+              result: '\u26a0\ufe0f ' + words[1],
+              title: words[2],
+            };
+          }
+
+          result = speedItem['result'];
+          speedText = result['average_dl_speed'];
+          speedTextFull = `${speedText} (+${result['connection_time']})`
+          updateTime = speedItem['update'];
+
+          return {
+            update: timeDiffFromNow(updateTime),
+            updateTime: updateTime,
+            result: speedTextFull,
+            speedNum: this.getServerSpeed(speedText),
+          }
+        },
+        loadSpeedData() {
+          fetchJSON('/speed.json', data => {
+            let result = {};
+            Object.entries(data).forEach(entry => {
+              const [key, value] = entry;
+              result[key] = this.makeSpeedText(value);
+            });
+
+            this.speed = {};
+            this.updateHighestSpeed(result);
+            this.speed = result;
+          });
+        },
+        updateLANSetting(allowed) {
+          if (allowed !== undefined) {
+            this.allowFromLAN = !!allowed;
+            this.allowFromLANQuerying = false;
+          }
+        },
+        async setAllowFromLAN(event) {
+          const allowed = event.target.checked;
+          this.allowFromLANQuerying = true;
+          conf = {key: 'allow_lan', value: allowed};
+          result = await this.apiPostJSON('/api/user_settings', conf);
+          if (result !== null) {
+            this.updateLANSetting(allowed);
+          }
+          this.allowFromLANQuerying = false;
         },
         openMonitor() {
           window.open('/monitor.html', 'monitor',
             'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=no,' +
             'resizable=yes,copyhistory=no,width=1100,height=800,top=100,left=100');
         },
+        async addFeed() {
+          const url = promptURL('Add Feed URL');
+          if (url === null) {
+            return;
+          }
+
+          result = await this.apiPostJSON('/api/add_feed', {url});
+          if (result === null) {
+            return;
+          }
+
+          if (result.existing) {
+            alert('Feed already existing: \n' + url);
+          } else {
+            this.feedList.push(result.feed);
+          }
+        },
+        async switchNode(item) {
+          const result = await this.apiPostJSON('/api/switch_node', item);
+          if (result !== null) {
+            this.activedServer = item.uid;
+          }
+        },
+        async testNode(item, callback) {
+          const result = await this.apiPostJSONNoAlert('/api/test_speed', item);
+          const speedText = this.makeSpeedText(result);
+          this.$set(this.speed, item.uid, speedText);
+          callback();
+          this.updateHighestSpeed();
+        },
+        async editFeed(uid, url, callback) {
+          const result = await this.apiPostJSON('/api/edit_feed', { uid, url });
+          callback(result);
+        },
+        opFeedByUID(uid, func, ...args) {
+          for (let i = 0; i < this.feedList.length; ++i) {
+            const item = this.feedList[i];
+            if (item.uid == uid) {
+              func(this.feedList, i, ...args);
+              break;
+            }
+          }
+        },
+        async deleteFeed(feedItem) {
+          if (!confirm(`Delete feed: "${feedItem.url}"?`)) {
+            return;
+          }
+
+          const uid = feedItem.uid;
+          const result = await this.apiPostJSON('/api/delete_feed', { uid });
+          if (result !== null) {
+            this.opFeedByUID(uid, this.$delete);
+          }
+        },
+        async updateFeed(uid, callback) {
+          const result = await this.apiPostJSON('/api/update_feed', { uid });
+          if (result !== null) {
+            const feed = this.addMetaDataToFeedList([result])[0];
+            this.opFeedByUID(uid, this.$set, feed);
+          }
+          callback(result);
+        },
       },
     });
-
-    function doUpdateFeed() {
-      fetch('/api/fetch_feed?token=' + vue.token, {
-          method: 'POST',
-        })
-        .then(res => {
-            return res.json();
-        })
-        .then(data => {
-          if (data.error) {
-            alert(`Error: ${data.error}`);
-            return;
-          }
-
-          location.reload();
-        })
-        .finally(() => vue.isUpdatingFeed = false)
-      ;
-    }
-
-    async function apiPostJSON(url, obj) {
-      const apiURL = (url + '?token=' + vue.token);
-      return await fetch(apiURL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(obj)
-        })
-        .then(res => {
-            return res.json();
-        })
-        .then(data => {
-          if (data.error) {
-            return { error: data.error };
-          } else {
-            return data;
-          }
-        })
-      ;
-    }
-
-    function sleep(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    function now() {
-      return new Date() / 1000;
-    }
-
-    function truncateString(str, num) {
-      if (str.length > num) {
-        return str.slice(0, num) + "...";
-      } else {
-        return str;
-      }
-    }
-
-    function addShadowProp(obj, name, value) {
-      delete obj[name];
-      Object.defineProperty(obj, name, {value, configurable: true});
-    }
-
-    function updateItemSpeedText(index, data) {
-      item = vue.servers[index];
-      addShadowProp(item, 'speed', data);
-      Vue.set(vue.servers, index, item);
-    }
-
-    async function doTestSpeedItem(index, item) {
-      updateItemSpeedText(index, {
-        update: '...',
-        result: '\uD83C\uDFCD\uFE0F Testing...',
-      });
-
-      result = await apiPostJSON('/api/test_speed', vue.itemConf(item));
-      speedText = makeSpeedText(result);
-      updateItemSpeedText(index, speedText);
-      vue.updateHighestSpeed();
-    }
-
-    async function doTestSpeed() {
-      nowTime = now();
-      cacheTime = vue.testSpeedSkipRecentSelected;
-      for (let i = 0; i < vue.servers.length; ++i) {
-        if (!vue.isTestingSpeed) {
-          break;
-        }
-
-        item = vue.servers[i];
-        if (!vue.canTestSpeed(item, i)) {
-          continue;
-        }
-
-        if (item.duplicate) {
-          continue;
-        }
-
-        if (item.speed?.updateTime !== undefined &&
-          (nowTime - item.speed.updateTime) < cacheTime) {
-          continue;
-        }
-
-        await doTestSpeedItem(i, item);
-      }
-
-      vue.isTestingSpeed = false;
-    }
-
-    function timeDiffFromNow(timestamp) {
-      return timeDifference(new Date(), timestamp * 1000);
-    }
-
-    function makeSpeedText(speedItem) {
-      const error = speedItem.error;
-      if (error !== undefined) {
-        let words = error.match(/([^:]*): "(.*)"/);
-        if (words === null) {
-          shortError = truncateString(error, 20);
-          words = [null, shortError, error];
-        }
-
-        return {
-          update: 'failed',
-          result: '\u26a0\ufe0f ' + words[1],
-          title: words[2],
-        };
-      }
-
-      result = speedItem['result'];
-      speed_text = `${result['average_dl_speed']}` +
-        `(+${result['connection_time']})`
-
-      updateTime = speedItem['update'];
-      return {
-        update: timeDiffFromNow(updateTime),
-        updateTime: updateTime,
-        result: speed_text,
-      }
-    }
-
-    function fillSpeedData(data) {
-      for (let i = 0; i < vue.servers.length; ++i) {
-        item = vue.servers[i];
-        if (item.duplicate) {
-          continue;
-        }
-
-        const serverUID = vue.itemUID(item);
-        if (data.hasOwnProperty(serverUID)) {
-          speedText = makeSpeedText(data[serverUID]);
-          updateItemSpeedText(i, speedText);
-        }
-      }
-
-      vue.updateHighestSpeed();
-    }
-
-    function loadSpeedData() {
-      fetch('/speed.json')
-        .then(res => res.json())
-        .then(fillSpeedData)
-      ;
-    }
-
-    function loadSelectedProxy() {
-      fetch('/cur_node.json')
-        .then(res => res.json())
-        .then(data => {
-          if (data.type === vue.serversType) {
-            vue.activedServer = JSON.stringify(data.data);
-          }
-        })
-      ;
-    }
-
-    function updateLANSetting(allowed) {
-      if (allowed !== undefined) {
-        vue.allowFromLAN = !!allowed;
-        vue.allowFromLANQuerying = false;
-      }
-    }
-
-    function loadUserSetting() {
-      fetch('/api/user_conf')
-        .then(res => res.json())
-        .then(data => {
-          if (data === undefined) {
-            return;
-          }
-
-          updateLANSetting(data.allow_lan);
-          vue.feedUrl = data.feed_url || '';
-        })
-      ;
-    }
-
-    async function doSetAllowFromLAN(allowed) {
-      vue.allowFromLANQuerying = true;
-      conf = {key: 'allow_lan', value: allowed};
-      result = await apiPostJSON('/api/set_value', conf);
-      if (result.error === undefined) {
-        updateLANSetting(allowed);
-      } else {
-        alert('SetAllowFromLAN failed: ' + result.error);
-        vue.allowFromLANQuerying = false;
-      }
-    }
-
-    async function doSwitchNode(item) {
-      result = await apiPostJSON('/api/switch_node', vue.itemConf(item));
-      if (result.error === undefined) {
-        vue.activedServer = JSON.stringify(item);
-      } else {
-        alert('Switch failed: ' + result.error);
-      }
-    }
-
-    function adaptPropNames(proxies) {
-      if (vue.serversType === 'vmess') {
-        proxies.forEach(server => {
-          addShadowProp(server, 'remark', server.ps);
-          addShadowProp(server, 'server', server.add);
-          addShadowProp(server, 'server_port', server.port);
-        });
-      }
-    }
-
-    fetch('/feed.json')
-      .then(res => res.json())
-      .then(data => {
-        vue.serversType = data.servers.scheme;
-        let proxies = data.servers.proxies;
-        adaptPropNames(proxies);
-
-        for (let i = 0; i < proxies.length; ++i) {
-          if (vue.isSpecialItem(proxies[i], i)) {
-            proxies[i].duplicate = false;
-          }
-        }
-
-        vue.servers = proxies;
-        vue.serversUpdate = timeDiffFromNow(data.update);
-      })
-      .then(loadSpeedData)
-      .then(loadSelectedProxy)
-    ;
-
-    fetch('/api/token')
-      .then(res => res.json())
-      .then(data => {
-        vue.token = data.token;
-      })
-      .then(loadUserSetting)
-    ;
   </script>
 </html>
