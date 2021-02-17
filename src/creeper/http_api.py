@@ -355,6 +355,7 @@ class ApiHandler:
     async def api_switch_node(self, req):
         conf = await read_json_body(req)
         await backend_utilitys.restart(self.app.backend, AttrDict(conf))
+        self.app.pac_server.update_sys_setting(True)
         await req.result_ok(conf)
 
     async def api_get_settings(self, req):
