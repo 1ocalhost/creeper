@@ -24,7 +24,6 @@ class AppIcons:
         self.play = icons_dir / 'play.ico'
         self.stop = icons_dir / 'stop.ico'
         self.settings = icons_dir / 'settings.ico'
-        self.help = icons_dir / 'help.ico'
         self.tray_play = icons_dir / 'tray_play.ico'
         self.tray_play_lan = icons_dir / 'tray_play_lan.ico'
         self.tray_stop = icons_dir / 'tray_stop.ico'
@@ -166,9 +165,6 @@ class App:
             self.did_enable_proxy = False
             self.update_state_icon(icon)
 
-        def on_help(icon):
-            webbrowser.open(self.base_url() + '/help.html')
-
         def on_settings(icon):
             webbrowser.open(self.base_url() + '/settings.html')
 
@@ -184,7 +180,6 @@ class App:
             (self.icons.stop, 'Turn Off', on_turn_off,
                 lambda: self.did_enable_proxy_menu),
             (self.icons.settings, 'Settings', on_settings),
-            (self.icons.help, 'Help', on_help),
         ]
 
         state_icon = self.make_state_icon()
