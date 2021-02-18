@@ -212,7 +212,7 @@ class App:
         tray_icon.update(state_icon)
 
     def on_magic(self, icon):
-        text = 'Restart the program? Or Press [No] to Quit.'
+        text = 'Restart the program? or press [No] to quit.'
         options = MsgBox.MB_YESNOCANCEL | MsgBox.MB_DEFBUTTON3 \
             | MsgBox.MB_ICONWARNING | MsgBox.MB_SETFOREGROUND
         result = MsgBox.show(text, APP_NAME, options)
@@ -221,6 +221,8 @@ class App:
             restart_app()
         elif result == MsgBox.IDNO:
             icon.destroy()
+            self.pac_server.update_sys_setting(False)
+            backend_utilitys.clear_all()
             exit_app()
 
     def run(self):

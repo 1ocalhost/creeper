@@ -1,7 +1,7 @@
 import os
 import sys
 import ctypes
-import ctypes.wintypes
+from ctypes.wintypes import DWORD, WCHAR
 from subprocess import call, CREATE_NO_WINDOW
 
 _user32 = ctypes.windll.user32
@@ -53,8 +53,7 @@ def _get_win_machine_guid_impl(key):
     KEY_NAME = 'MachineGuid'
     REG_SZ = 1
     STR_MAX_LEN = 1024
-    DWORD = ctypes.wintypes.DWORD
-    UIDStr = ctypes.wintypes.WCHAR * STR_MAX_LEN
+    UIDStr = WCHAR * STR_MAX_LEN
     type_ = DWORD()
     cb_data = DWORD()
     uid = UIDStr()
@@ -121,4 +120,4 @@ def exit_app():
 def restart_app():
     exit_cmd = _get_exit_cmd()
     self_cmd = _get_self_cmd()
-    exec_cmd(f'{exit_cmd} && start {self_cmd}')
+    exec_cmd(f'{exit_cmd} && start "" {self_cmd}')
