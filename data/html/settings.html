@@ -191,7 +191,8 @@
           Allow from LAN
         </label>
         <div class="separator"></div>
-        <button @click="openMonitor">Open Monitor</button>
+        <button @click="openAppFolder">App Folder</button>
+        <button @click="openMonitor">Monitor</button>
         <button @click="addFeed">Add Feed</button>
       </div>
       <div class="server-lists">
@@ -766,6 +767,9 @@
             this.updateLANSetting(allowed);
           }
           this.allowFromLANQuerying = false;
+        },
+        openAppFolder() {
+          this.apiPostJSON('/api/simple_cmd', {cmd: 'open_app_folder'});
         },
         openMonitor() {
           window.open('/monitor.html', 'monitor',

@@ -13,14 +13,15 @@ from ipaddress import ip_address
 from urllib.parse import urlsplit, parse_qs
 
 from creeper.log import logger
-from creeper.env import IS_DEBUG, CONF_DIR, HTML_DIR, USER_CONF, \
-    FILE_FEED_JSON, FILE_SPEED_JSON, FILE_CUR_NODE_JSON
+from creeper.env import IS_DEBUG, APP_DIR, CONF_DIR, HTML_DIR, \
+    USER_CONF, FILE_FEED_JSON, FILE_SPEED_JSON, FILE_CUR_NODE_JSON
 from creeper.utils import write_drain, fmt_exc, readable_exc, AttrDict
 from creeper.proxy.feed import add_feed, delete_feed, edit_feed, update_feed
 from creeper.proxy.backend import backend_utilitys
 from creeper.components import statistic
 from creeper.components.measure import test_backend_speed
 from creeper.components.diagnosis import diagnosis_network
+from creeper.impl.win_utils import shell_execute
 
 MIME_HTML = 'text/html'
 MIME_JSON = 'application/json'
@@ -38,7 +39,7 @@ class ChunkedWriter:
         self.writer = req.writer
 
     async def begin(self):
-        headers = [f'Transfer-Encoding: chunked']
+        headers = ['Transfer-Encoding: chunked']
         await write_http_response(
             self.writer, None, 200, MIME_HTML, headers)
 
@@ -136,8 +137,9 @@ def parse_http_raw_header(header):
 async def web_socket_accept(headers, writer):
     websocket_key = headers.get('sec-websocket-key')
     if not websocket_key:
-        logger.warning('no sec-websocket-key')
-        raise
+        reason = 'no sec-websocket-key'
+        logger.warning(reason)
+        raise Exception(reason)
 
     def accept(key):
         GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
@@ -300,6 +302,7 @@ class ApiHandler:
         self.route('GET ', '/api/user_settings', self.api_get_settings)
         self.route('POST', '/api/user_settings', self.api_set_settings)
         self.route('GET ', '/api/diagnosis', self.api_diagnosis)
+        self.route('POST', '/api/simple_cmd', self.api_simple_cmd)
 
     def route(self, method, path, func):
         method_ = method.strip().upper()
@@ -378,7 +381,7 @@ class ApiHandler:
     async def api_diagnosis(self, req):
         writer = ChunkedWriter(req)
         await writer.begin()
-        await writer.write(f'<!-- resolve delayed rendering of IE -->' * 20)
+        await writer.write('<!-- resolve delayed rendering of IE -->' * 20)
 
         async def call_func(func, text):
             escaped_text = text.replace('\n', R'\n').replace('"', R'\"')
@@ -392,6 +395,16 @@ class ApiHandler:
                 await call_func('appendLog', text)
 
         await writer.end()
+
+    async def api_simple_cmd(self, req):
+        conf = await read_json_body(req)
+        cmd = conf['cmd']
+
+        if cmd == 'open_app_folder':
+            shell_execute('open', APP_DIR)
+        else:
+            raise ValueError(f'bad cmd: {cmd}')
+        await req.result_ok(conf)
 
     def is_pac_path(self, path):
         url = urlsplit(path)

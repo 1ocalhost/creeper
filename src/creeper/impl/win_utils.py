@@ -5,12 +5,16 @@ import ctypes.wintypes
 from subprocess import call, CREATE_NO_WINDOW
 
 _user32 = ctypes.windll.user32
+_shell32 = ctypes.windll.shell32
 _advapi32 = ctypes.windll.advapi32
 
 _MessageBoxW = _user32.MessageBoxW
+ShellExecute = _shell32.ShellExecuteW
 RegOpenKeyEx = _advapi32.RegOpenKeyExW
 RegQueryValueEx = _advapi32.RegQueryValueExW
 RegCloseKey = _advapi32.RegCloseKey
+
+SW_SHOWDEFAULT = 10
 
 
 class MsgBox:
@@ -38,6 +42,11 @@ class MsgBox:
     @staticmethod
     def show(text, caption, flags):
         return _MessageBoxW(None, text, caption, flags)
+
+
+def shell_execute(operation, file):
+    return ShellExecute(
+        None, str(operation), str(file), None, None, SW_SHOWDEFAULT)
 
 
 def _get_win_machine_guid_impl(key):
