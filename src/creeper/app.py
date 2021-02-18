@@ -15,7 +15,7 @@ from creeper.components import statistic
 from creeper.components.update import check_update
 from creeper.http_api import get_api_filter
 from creeper.impl.win_tray_icon import start_tray_icon_menu
-from creeper.impl.win_utils import MsgBox, restart
+from creeper.impl.win_utils import MsgBox, exit_app, restart_app
 
 
 class AppIcons:
@@ -31,11 +31,16 @@ class AppIcons:
 
 class App:
     def __init__(self):
-        host_ip = '0.0.0.0' if USER_CONF.allow_lan else '127.0.0.1'
+        if USER_CONF.allow_lan:
+            host_name, host_ip = 'any', '0.0.0.0'
+        else:
+            host_name, host_ip = 'local', '127.0.0.1'
+
         self.http_server = None
         self.icons = AppIcons()
         self.tray_icon = None
         self.app_host = host_ip
+        self.app_host_name = host_name
         self.app_port = APP_CONF['main_port']
         self.router = Router(PATH_CNIP_DB)
         self.pac_server = PACServer(self)
@@ -93,7 +98,8 @@ class App:
         self.http_server = server
         host, port = addr
         logger.info(f'serving on: {host}:{port}')
-        self.tray_icon.update(hover_text=f'{APP_NAME} ({port})')
+        tray_tip = f'{APP_NAME} ({self.app_host_name}:{port})'
+        self.tray_icon.update(hover_text=tray_tip)
 
         if not self.pac_server.update_sys_setting(True):
             logger.error('update pac setting')
@@ -148,7 +154,7 @@ class App:
         if self.backend.port:
             logger.info(f'[backend] serving on {self.backend.port}...')
         else:
-            logger.warning(f'configuration for backend not found!')
+            logger.warning('configuration for backend not found!')
 
     def init_tray_icon(self):
         def on_turn_on(icon):
@@ -168,12 +174,6 @@ class App:
         def on_settings(icon):
             webbrowser.open(self.base_url() + '/settings.html')
 
-        def on_magic(icon):
-            result = MsgBox.show(
-                'Restart the program?', APP_NAME, MsgBox.MB_OKCANCEL)
-            if result == MsgBox.IDOK:
-                self.restart()
-
         menu_items = [
             (self.icons.play, 'Turn On', on_turn_on,
                 lambda: not self.did_enable_proxy_menu),
@@ -185,7 +185,7 @@ class App:
         state_icon = self.make_state_icon()
         self.tray_icon = start_tray_icon_menu(
             menu_items, state_icon, APP_NAME)
-        self.tray_icon.set_magic_handler(on_magic)
+        self.tray_icon.set_magic_handler(self.on_magic)
 
     @property
     def did_enable_proxy_menu(self):
@@ -211,9 +211,17 @@ class App:
         state_icon = self.make_state_icon()
         tray_icon.update(state_icon)
 
-    def restart(self):
-        self.tray_icon.destroy()
-        restart()
+    def on_magic(self, icon):
+        text = 'Restart the program? Or Press [No] to Quit.'
+        options = MsgBox.MB_YESNOCANCEL | MsgBox.MB_DEFBUTTON3 \
+            | MsgBox.MB_ICONWARNING | MsgBox.MB_SETFOREGROUND
+        result = MsgBox.show(text, APP_NAME, options)
+        if result == MsgBox.IDYES:
+            icon.destroy()
+            restart_app()
+        elif result == MsgBox.IDNO:
+            icon.destroy()
+            exit_app()
 
     def run(self):
         check_singleton()

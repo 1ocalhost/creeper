@@ -19,6 +19,16 @@ class MsgBox:
     MB_YESNOCANCEL = 3
     MB_YESNO = 4
 
+    MB_SETFOREGROUND = 0x00010000
+    MB_ICONERROR = 0x00000010
+    MB_ICONQUESTION = 0x00000020
+    MB_ICONWARNING = 0x00000030
+    MB_ICONINFORMATION = 0x00000040
+
+    MB_DEFBUTTON1 = 0x00000000
+    MB_DEFBUTTON2 = 0x00000100
+    MB_DEFBUTTON3 = 0x00000200
+
     IDOK = 1
     IDCANCEL = 2
     IDABORT = 3
@@ -86,8 +96,20 @@ def _get_self_cmd():
     return ' '.join(map(escape, args))
 
 
-def restart():
+def _get_exit_cmd():
     pid = os.getpid()
-    self_cmd = _get_self_cmd()
-    cmd = f'taskkill /F /PID {pid} && start {self_cmd}'
+    return f'taskkill /F /PID {pid}'
+
+
+def exec_cmd(cmd):
     call(cmd, shell=True, creationflags=CREATE_NO_WINDOW)
+
+
+def exit_app():
+    exec_cmd(_get_exit_cmd())
+
+
+def restart_app():
+    exit_cmd = _get_exit_cmd()
+    self_cmd = _get_self_cmd()
+    exec_cmd(f'{exit_cmd} && start {self_cmd}')
