@@ -1,6 +1,6 @@
+import sys
 import errno
 import asyncio
-import webbrowser
 import aiosocks
 
 from creeper.utils import check_singleton
@@ -15,7 +15,7 @@ from creeper.components import statistic
 from creeper.components.update import check_update
 from creeper.http_api import get_api_filter
 from creeper.impl.win_tray_icon import start_tray_icon_menu
-from creeper.impl.win_utils import MsgBox, exit_app, restart_app
+from creeper.impl.win_utils import MsgBox, open_url, exit_app, restart_app
 
 
 class AppIcons:
@@ -159,7 +159,7 @@ class App:
     def init_tray_icon(self):
         def on_turn_on(icon):
             if self.need_restart:
-                self.restart()
+                self.handle_command('restart')
                 return
 
             self.pac_server.update_sys_setting(True)
@@ -172,7 +172,7 @@ class App:
             self.update_state_icon(icon)
 
         def on_settings(icon):
-            webbrowser.open(self.base_url() + '/settings.html')
+            open_url(self.base_url() + '/settings.html')
 
         menu_items = [
             (self.icons.play, 'Turn On', on_turn_on,
@@ -183,8 +183,9 @@ class App:
         ]
 
         state_icon = self.make_state_icon()
+        title = 'trayicon@' + sys.executable
         self.tray_icon = start_tray_icon_menu(
-            menu_items, state_icon, APP_NAME)
+            menu_items, state_icon, APP_NAME, title)
         self.tray_icon.set_magic_handler(self.on_magic)
 
     @property
@@ -211,19 +212,26 @@ class App:
         state_icon = self.make_state_icon()
         tray_icon.update(state_icon)
 
+    def handle_command(self, command):
+        icon = self.tray_icon
+        if command == 'restart':
+            icon.destroy()
+            restart_app()
+        elif command == 'exit':
+            icon.destroy()
+            self.pac_server.update_sys_setting(False)
+            backend_utilitys.clear_all()
+            exit_app()
+
     def on_magic(self, icon):
         text = 'Restart the program? or press [No] to quit.'
         options = MsgBox.MB_YESNOCANCEL | MsgBox.MB_DEFBUTTON3 \
             | MsgBox.MB_ICONWARNING | MsgBox.MB_SETFOREGROUND
         result = MsgBox.show(text, APP_NAME, options)
         if result == MsgBox.IDYES:
-            icon.destroy()
-            restart_app()
+            self.handle_command('restart')
         elif result == MsgBox.IDNO:
-            icon.destroy()
-            self.pac_server.update_sys_setting(False)
-            backend_utilitys.clear_all()
-            exit_app()
+            self.handle_command('exit')
 
     def run(self):
         check_singleton()

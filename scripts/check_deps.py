@@ -80,6 +80,13 @@ def download(dependency, path):
     dependency['sha256'] = hash_
 
 
+def check_hash(expected, real):
+    if (expected == '*'):
+        return True
+
+    return real == expected.lower()
+
+
 def main():
     top_dir = Path(CUR_DIR).parent
     manifest = read_manifest()
@@ -88,7 +95,7 @@ def main():
     for dependency in manifest['dependencies']:
         full_path = top_dir / dependency['path']
         real_hash = file_sha256sum(full_path)
-        if real_hash != dependency['sha256']:
+        if not check_hash(dependency['sha256'], real_hash):
             download(dependency, full_path)
             changed = True
 

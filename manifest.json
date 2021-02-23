@@ -19,7 +19,7 @@
         },
         {
             "path": "build_deps/creeper-installer.exe",
-            "sha256": "ce69cf968dd4ca95ff03fb39ddb15f474763819b5676b7c79116b19078b47ff4",
+            "sha256": "2221586f59067fa92a4ddb8cb39b6c476c51b0df9bb608394ef5cfe9589ef54c",
             "download_url": "https://github.com/1ocalhost/creeper-installer/releases/latest/download/creeper-installer.exe"
         },
         {

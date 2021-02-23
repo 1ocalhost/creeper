@@ -338,9 +338,10 @@ class _TrayIcon:
 
 
 class _TrayIconWindow:
-    def __init__(self, tray_icon):
+    def __init__(self, tray_icon, window_title):
         self._msg_handler = None
         self._tray_icon = tray_icon
+        self._window_title = window_title
         self._hinst = win32gui.GetModuleHandle(None)
         self._win_class = _WindowClass(self._hinst, self._window_proc)
 
@@ -352,7 +353,7 @@ class _TrayIconWindow:
     def _create_window(self, atom):
         style = win32con.WS_OVERLAPPED | win32con.WS_SYSMENU
         hwnd = win32gui.CreateWindow(
-            atom, '', style, 0, 0,
+            atom, self._window_title, style, 0, 0,
             100, 100, 0, 0, self._hinst, None)
 
         if hwnd:
@@ -531,9 +532,9 @@ class _TrayIconMenuHandler:
             handler(hwnd, wparam, lparam)
 
 
-def start_tray_icon_menu(menu, icon, description):
+def start_tray_icon_menu(menu, icon, description, window_title=''):
     tray_icon = _TrayIcon()
-    window = _TrayIconWindow(tray_icon)
+    window = _TrayIconWindow(tray_icon, window_title)
     handler = _TrayIconMenuHandler(menu, tray_icon)
     event = Event()
 

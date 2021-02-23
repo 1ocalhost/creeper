@@ -1,6 +1,7 @@
 import os
 import sys
 import ctypes
+import tempfile
 from ctypes.wintypes import DWORD, WCHAR
 from subprocess import call, CREATE_NO_WINDOW
 
@@ -111,6 +112,12 @@ def _get_exit_cmd():
 
 def exec_cmd(cmd):
     call(cmd, shell=True, creationflags=CREATE_NO_WINDOW)
+
+
+def open_url(url):
+    # NOYE: Chrome will lock CWD
+    tmp_dir = tempfile.gettempdir()
+    exec_cmd(f'cd /D "{tmp_dir}" && start "" "{url}"')
 
 
 def exit_app():

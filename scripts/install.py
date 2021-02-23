@@ -5,7 +5,6 @@ import traceback
 import shutil
 import tempfile
 import subprocess
-import webbrowser
 from pathlib import Path
 
 APP_NAME = 'Creeper'
@@ -13,6 +12,45 @@ APP_UID = 'creeper.pyapp.win32'
 INSTALLER_NAME = APP_NAME + ' Installer'
 APP_DIR = Path(__file__).absolute().parent
 WINAPI = None
+
+
+def try_os_remove(path):
+    return try_os_unlink(path)
+
+
+def try_os_unlink(path):
+    try:
+        return os.unlink(path)
+    except FileNotFoundError:
+        pass
+
+
+def try_os_rmdir(path):
+    try:
+        return os.rmdir(path)
+    except FileNotFoundError:
+        pass
+
+
+def try_sh_move(src, dst):
+    try:
+        return shutil.move(src, dst)
+    except FileNotFoundError:
+        pass
+
+
+def try_sh_copytree(src, dst):
+    try:
+        return shutil.copytree(src, dst)
+    except FileNotFoundError:
+        pass
+
+
+def try_sh_rmtree(path):
+    try:
+        return shutil.rmtree(path)
+    except FileNotFoundError:
+        pass
 
 
 class WinApi:
@@ -63,7 +101,6 @@ def message_box(msg, icon=None, confirm=False):
 
 
 def message_box_cmd(msg):
-    import subprocess
     msg = msg.replace('"', "'")
     script = f'msgbox ""{msg}"", 0, ""{INSTALLER_NAME}"":close'
     subprocess.run(f'mshta vbscript:Execute("{script}")')
@@ -115,7 +152,9 @@ class SpecialFolders:
         return self._get_dir(self.CSIDL_COMMON_STARTUP)
 
 
-def create_shortcut(shortcut_path, target, arguments='', working_dir=''):
+def create_shortcut(
+        shortcut_path, target, arguments='',
+        working_dir='', icon=''):
     shortcut_path = Path(shortcut_path)
     shortcut_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -134,7 +173,12 @@ def create_shortcut(shortcut_path, target, arguments='', working_dir=''):
     shortcut_path = escape_path(shortcut_path)
     target = escape_path(target)
     working_dir = escape_path(working_dir)
+    icon = escape_path(icon)
     arguments = escape_str(arguments)
+
+    icon_line = ''
+    if icon:
+        icon_line = f'shortcut.IconLocation = "{icon}";'
 
     js_content = f'''
         var sh = WScript.CreateObject("WScript.Shell");
@@ -142,6 +186,7 @@ def create_shortcut(shortcut_path, target, arguments='', working_dir=''):
         shortcut.TargetPath = "{target}";
         shortcut.Arguments = "{arguments}";
         shortcut.WorkingDirectory = "{working_dir}";
+        {icon_line}
         shortcut.Save();'''
 
     fd, path = tempfile.mkstemp('.js')
@@ -150,7 +195,7 @@ def create_shortcut(shortcut_path, target, arguments='', working_dir=''):
             f.write(js_content)
         subprocess.run([R'wscript.exe', path])
     finally:
-        os.unlink(path)
+        try_os_unlink(path)
 
 
 def launcher_lnk(folder):
@@ -161,7 +206,7 @@ def uninstaller_lnk(folder):
     return folder / 'Uninstall.lnk'
 
 
-def install_app():
+def install_app_impl():
     FOLDER = SpecialFolders()
     menu_dir = FOLDER.start_menu_dir(True)
     startup_dir = FOLDER.startup_dir()
@@ -175,31 +220,62 @@ def install_app():
         return
 
     launcher = launcher_lnk(menu_dir)
-    create_shortcut(launcher, 'python/pythonw.exe', 'src.pyc', APP_DIR)
     create_shortcut(
-        uninstaller_lnk(menu_dir), 'installer.exe', 'uninstall', APP_DIR)
+        launcher, 'python/pythonw.exe', 'src.pyc',
+        APP_DIR, APP_DIR / 'data/icons/tray_play.ico')
+    create_shortcut(
+        uninstaller_lnk(menu_dir),
+        'installer.exe', 'copy-uninstall', APP_DIR)
 
     shutil.copy(launcher, startup_dir)
     return launcher
 
 
-def uninstall_app():
-    if not message_box(
-            'Do you want to remove this app?', confirm=True):
+def try_uninstall_app_old():
+    FOLDER = SpecialFolders()
+    startup_dir = FOLDER.startup_dir()
+    if not startup_dir:
         return
 
+    launcher = Path(startup_dir) / f'{APP_UID}.vbs'
+    try_os_remove(launcher)
+
+
+def restore_user_files():
+    is_upgrade = (APP_DIR / 'data.old').exists()
+    if not is_upgrade:
+        return
+
+    old_ver_file = APP_DIR / 'data.old/html/version.json'
+    is_former_too_old = not old_ver_file.exists()
+    if is_former_too_old:
+        try_uninstall_app_old()
+        return
+
+    user_conf_old = APP_DIR / 'data.old/conf/user'
+    user_conf = APP_DIR / 'data/conf/user'
+
+    try_os_rmdir(user_conf)
+    try_sh_copytree(user_conf_old, user_conf)
+
+
+def install_app():
+    restore_user_files()
+    check_python()
+    launcher = install_app_impl()
+    os.startfile(launcher)
+
+
+def uninstall_app():
     FOLDER = SpecialFolders()
     menu_dir = FOLDER.start_menu_dir()
     startup_dir = FOLDER.startup_dir()
 
     if menu_dir:
-        shutil.rmtree(menu_dir)
+        try_sh_rmtree(menu_dir)
 
     if startup_dir:
-        try:
-            os.unlink(launcher_lnk(startup_dir))
-        except FileNotFoundError:
-            pass
+        try_os_unlink(launcher_lnk(startup_dir))
 
 
 def main():
@@ -207,14 +283,12 @@ def main():
         message_box('Not support Windows XP or older.', 'error')
         return
 
-    if '--undo' in sys.argv[1:]:
-        uninstall_app()
-        return
-
-    check_python()
-    launcher = install_app()
-    os.startfile(launcher)
-    message_box(f'{APP_NAME} has been installed successfully!', 'info')
+    args = sys.argv[1:]
+    if len(args) == 0:
+        install_app()
+    elif len(args) == 1:
+        if '--undo' in args:
+            uninstall_app()
 
 
 def gen_url_KB2533623():
@@ -223,13 +297,22 @@ def gen_url_KB2533623():
         f'Windows6.1-KB2533623-{arch}.msu'
 
 
+def open_url(url):
+    # NOYE: Chrome will lock CWD
+    tmp_dir = tempfile.gettempdir()
+    cmd = f'cd /D "{tmp_dir}" && start "" "{url}"'
+    subprocess.call(
+        cmd, shell=True,
+        creationflags=subprocess.CREATE_NO_WINDOW)
+
+
 if __name__ == "__main__":
     try:
         import ctypes
         import ctypes.wintypes
     except ImportError:
         message_box_cmd('You should install KB2533623 update.')
-        webbrowser.open(gen_url_KB2533623())
+        open_url(gen_url_KB2533623())
         sys.exit(1)
 
     try:

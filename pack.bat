@@ -30,7 +30,8 @@ echo      ^|^| ^|-_\__   /
 echo     ((_/`(____,-'
 echo.
 echo    Build succeeded!
-
+timeout /t 1
+exit
 
 :_exit
 echo.
