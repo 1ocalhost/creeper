@@ -1,12 +1,19 @@
 import os
 import sys
 import hashlib
+import zipfile
 import urllib.request as url_req
 from pathlib import Path
 
 CUR_DIR = Path(__file__).parent
-
 did_setup_proxy = False
+
+
+def try_os_unlink(path):
+    try:
+        return os.unlink(path)
+    except FileNotFoundError:
+        pass
 
 
 def file_sha256sum(path):
@@ -62,6 +69,29 @@ def _download_hook(blocknum, blocksize, totalsize):
         sys.stderr.write('read %d\n' % (readsofar,))
 
 
+def unzip(zip_file, item_path, out_path):
+    with zipfile.ZipFile(zip_file, 'r') as zip_:
+        with zip_.open(item_path) as in_, open(out_path, 'wb') as out:
+            while True:
+                block = in_.read(1024 * 1024)
+                if not block:
+                    break
+                out.write(block)
+
+
+def uncompress(dependency, dl_path, path):
+    conf = dependency.get('uncompress')
+    if not conf:
+        os.rename(dl_path, path)
+        return
+
+    type, item_path = conf.split('!')
+    if type == 'zip':
+        unzip(dl_path, item_path, path)
+    else:
+        raise NotImplementedError(type)
+
+
 def download(dependency, path):
     assert isinstance(path, Path)
     url = dependency['download_url']
@@ -69,11 +99,16 @@ def download(dependency, path):
     path.parent.mkdir(parents=True, exist_ok=True)
 
     print(f'Downloading {path} from {url}...')
+    dl_path = f'{path}.downloading'
+
     try:
-        url_req.urlretrieve(url, path, _download_hook)
+        url_req.urlretrieve(url, dl_path, _download_hook)
+        uncompress(dependency, dl_path, path)
     except BaseException:
-        path.unlink()
+        try_os_unlink(path)
         raise
+    finally:
+        try_os_unlink(dl_path)
 
     hash_ = file_sha256sum(path)
     assert hash_

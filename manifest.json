@@ -5,16 +5,18 @@
         {
             "path": "data/bin/ssrwin.exe",
             "sha256": "aaa16af131c884428b5f625c12aede47c331939634bd5bfe5a0b69aecda43364",
-            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/ssrwin.exe"
+            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/ssrwin.exe.zip",
+            "uncompress": "zip!ssrwin.exe"
         },
         {
             "path": "data/bin/v2ray.exe",
-            "sha256": "ca621143512b1674bbb5fc4c0507f459b1077faaabe5667faffc8ae093888135",
-            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/v2ray.exe"
+            "sha256": "808ef45efadc0ca908a5a7f33c2edd4daa847fa64619c8c0dcf3f92d228431f8",
+            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/v2ray.exe.zip",
+            "uncompress": "zip!v2ray.exe"
         },
         {
             "path": "data/conf/vendor/cn_ip.txt",
-            "sha256": "6143e2c7f74fe0d128bf19d15a13518729aee28a62af6f62d0a9aa1a70c54ef7",
+            "sha256": "e5d6e1480851f9469b17098ecb16456dbf200e22b03967cb1e07d01692b234d8",
             "download_url": "https://github.com/17mon/china_ip_list/raw/master/china_ip_list.txt"
         },
         {
