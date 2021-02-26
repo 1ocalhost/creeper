@@ -235,7 +235,7 @@ async def test_backend_speed(conf):
             raise Exception('failed to start backend')
 
         url = APP_CONF['measure_url']
-        proxy = f'socks5://127.0.0.1:{backend.port}'
+        proxy = f'socks5://{backend.host}:{backend.port}'
 
         try:
             result = await test_download_speed(url, proxy)

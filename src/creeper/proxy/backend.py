@@ -15,6 +15,8 @@ POPEN_GENERAL_PARAM = dict(
     stdout=PIPE, stderr=PIPE, creationflags=CREATE_NO_WINDOW
 )
 
+BACKEND_LOCAL_ADDR = '127.0.0.2'
+
 
 def _make_backend_uid():
     m = hashlib.md5()
@@ -35,20 +37,12 @@ def find_listen_addr_by_pid(pid):
         raise Exception(stdout, stderr)
 
     result = {}
-    for line in split_no_empty(stdout.decode(), '\r\n'):
-        str_list = list(split_no_empty(line, ' '))
+    for line in split_no_empty(stdout.decode(), '\n'):
+        str_list = list(split_no_empty(line, None))
         addr, pid_ = str_list[1], str_list[-1]
-        result.setdefault(pid_, []).append(addr)
+        result.setdefault(pid_, []).append(addr.split(':'))
 
-    return result.get(str(pid), None)
-
-
-def find_listen_port_by_pid(pid):
-    addr = find_listen_addr_by_pid(pid)
-    if addr is None:
-        return
-
-    return int(addr[0].split(':')[-1])
+    return result.get(str(pid), [])
 
 
 class BackendUtility:
@@ -110,7 +104,7 @@ class BackendUtilitySSR(BackendUtility):
         return [
             bin_file,
             '-c', conf_file_,
-            '-b', '127.0.0.1',
+            '-b', BACKEND_LOCAL_ADDR,
             '-l', '0',
         ]
 
@@ -118,7 +112,7 @@ class BackendUtilitySSR(BackendUtility):
 class BackendUtilityV2Ray(BackendUtility):
     INBOUND = {
         'port': 0,
-        'listen': '127.0.0.1',
+        'listen': BACKEND_LOCAL_ADDR,
         'protocol': 'socks'
     }
 
@@ -233,6 +227,7 @@ backend_utilitys = BackendUtilitys()
 class Backend:
     def __init__(self):
         self.process = None
+        self.host = BACKEND_LOCAL_ADDR
         self.port = None
         self.tmp_conf_file = None
         self.backend_util = None
@@ -257,6 +252,12 @@ class Backend:
     def start(self, **kwargs):
         return run_async(self.start_async(**kwargs))
 
+    def find_listen_port(self):
+        addr_list = find_listen_addr_by_pid(self.process.pid)
+        for host, port in addr_list:
+            if host == self.host:
+                return port
+
     async def start_async(self, conf=None, timeout=5):
         args = self.get_args(conf)
         if not args:
@@ -265,7 +266,7 @@ class Backend:
         self.process = Popen(args, **POPEN_GENERAL_PARAM)
         interval = 0.5
         for i in range(int(timeout / interval)):
-            self.port = find_listen_port_by_pid(self.process.pid)
+            self.port = self.find_listen_port()
             if self.port is not None:
                 break
             await asyncio.sleep(interval)

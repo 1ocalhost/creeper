@@ -17,6 +17,9 @@ from creeper.http_api import get_api_filter
 from creeper.impl.win_tray_icon import start_tray_icon_menu
 from creeper.impl.win_utils import MsgBox, open_url, exit_app, restart_app
 
+ADDR_ANY = '0.0.0.0'
+ADDR_LOCAL = '127.0.0.1'
+
 
 class AppIcons:
     def __init__(self):
@@ -32,9 +35,9 @@ class AppIcons:
 class App:
     def __init__(self):
         if USER_CONF.allow_lan:
-            host_name, host_ip = 'any', '0.0.0.0'
+            host_name, host_ip = 'any', ADDR_ANY
         else:
-            host_name, host_ip = 'local', '127.0.0.1'
+            host_name, host_ip = 'local', ADDR_LOCAL
 
         self.http_server = None
         self.icons = AppIcons()
@@ -60,7 +63,7 @@ class App:
         USER_CONF.enable_proxy = value
 
     def base_url(self):
-        return f'http://127.0.0.1:{self.app_port}'
+        return f'http://{ADDR_LOCAL}:{self.app_port}'
 
     async def is_connect_direct(self, host):
         if not self.did_enable_proxy:
@@ -82,7 +85,7 @@ class App:
             statistic.on_route('DIRECT', host, remote)
             connection = await asyncio.open_connection(remote, port)
         else:
-            backend = aiosocks.Socks5Addr('127.0.0.1', backend_port)
+            backend = aiosocks.Socks5Addr(self.backend.host, backend_port)
             statistic.on_route('PROXY', host, remote)
             dst = (host, port)  # Use domain-name to avoid DNS cache pollution
             connection = await aiosocks.open_connection(
@@ -152,7 +155,8 @@ class App:
 
         self.backend.start()
         if self.backend.port:
-            logger.info(f'[backend] serving on {self.backend.port}...')
+            addr = f'{self.backend.host}:{self.backend.port}'
+            logger.info(f'[backend] serving on {addr}...')
         else:
             logger.warning('configuration for backend not found!')
 
