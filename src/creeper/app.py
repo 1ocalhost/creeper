@@ -34,7 +34,9 @@ class AppIcons:
 
 class App:
     def __init__(self):
-        if USER_CONF.allow_lan:
+        self.listen_any_addr = USER_CONF.allow_lan \
+            or USER_CONF.allow_lan_once
+        if self.listen_any_addr:
             host_name, host_ip = 'any', ADDR_ANY
         else:
             host_name, host_ip = 'local', ADDR_LOCAL

@@ -363,8 +363,21 @@ class ApiHandler:
 
     async def api_get_settings(self, req):
         keys = ['allow_lan']
-        result = [(key, USER_CONF[key]) for key in keys]
-        await req.result_ok(dict(result))
+        user_conf = [(key, USER_CONF[key]) for key in keys]
+
+        app_conf = {}
+        app_conf['listen_any_addr'] = self.app.listen_any_addr
+
+        result = dict(user_conf)
+        result['app'] = app_conf
+        await req.result_ok(result)
+
+    def set_allow_lan(self, enable):
+        enable = bool(enable)
+        USER_CONF.allow_lan = enable
+        self.app.update_state_icon()
+        if enable and not USER_CONF.allow_lan_once:
+            USER_CONF.allow_lan_once = True
 
     async def api_set_settings(self, req):
         payload = await read_json_body(req)
@@ -372,8 +385,7 @@ class ApiHandler:
         req_value = payload['value']
 
         if req_key == 'allow_lan':
-            USER_CONF.allow_lan = bool(req_value)
-            self.app.update_state_icon()
+            self.set_allow_lan(req_value)
         else:
             raise ValueError(f'bad key name: {req_key}')
         await req.result_ok(payload)

@@ -189,6 +189,9 @@
             @change="setAllowFromLAN($event)"
           />
           Allow from LAN
+          <span v-if="needsRestartApp">
+            (<a style="color: #e80c0c;">Needs Restart</a>)
+          </span>
         </label>
         <div class="separator"></div>
         <button @click="openAppFolder">App Folder</button>
@@ -340,7 +343,7 @@
         return false;
       }
 
-      const port = item.conf.server_port;
+      const port = parseInt(item.conf.server_port);
       return port < 10 || [10086].includes(port);
     }
 
@@ -553,6 +556,7 @@
         highestSpeed: 0,
         allowFromLAN: false,
         allowFromLANQuerying: true,
+        appConf: {},
         feedList: [],
         activedServer: null,
       },
@@ -579,6 +583,11 @@
           const v = this.version;
           const name = capitalizeFirstLetter(v.name);
           return `${name} ${v.verison} (${v.build})`;
+        },
+        needsRestartApp() {
+          app = this.appConf;
+          anyAddr = app && app['listen_any_addr'];
+          return this.allowFromLAN && !anyAddr;
         },
       },
       methods: {
@@ -697,6 +706,7 @@
         loadUserSetting() {
           fetchJSON('/api/user_settings', data => {
             this.updateLANSetting(data.allow_lan);
+            this.appConf = data.app
           });
         },
         getServerSpeed(speedText) {
