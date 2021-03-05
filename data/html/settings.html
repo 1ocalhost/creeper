@@ -181,18 +181,14 @@
           <a>{{versionText}}</a>
         </div>
         <div class="separator"></div>
-        <label>
-          <input
-            type="checkbox"
-            v-model="allowFromLAN"
-            :disabled="allowFromLANQuerying"
-            @change="setAllowFromLAN($event)"
-          />
-          Allow from LAN
+        <check-opt ref="optSmartMode" key-name="smart_mode" label="Smart Mode"
+          :confirm="{beforeUncheck: 'Are you sure you want to disable SMART mode?'}">
+        </check-opt>
+        <check-opt ref="optAllowLan" key-name="allow_lan" label="Allow from LAN">
           <span v-if="needsRestartApp">
             (<a style="color: #e80c0c;">Needs Restart</a>)
           </span>
-        </label>
+        </check-opt>
         <div class="separator"></div>
         <button @click="openAppFolder">App Folder</button>
         <button @click="openMonitor">Monitor</button>
@@ -346,6 +342,73 @@
       const port = parseInt(item.conf.server_port);
       return port < 10 || [10086].includes(port);
     }
+
+    Vue.component('check-opt', {
+      template: `
+        <label>
+          <input
+            type="checkbox"
+            v-model="checked"
+            :disabled="pending"
+            @change="onChanged($event)"
+          />
+          {{label}}
+          <slot></slot>
+        </label>
+      `,
+      props: ['keyName', 'label', 'confirm'],
+      data() {
+        return {
+          checked: false,
+          pending: true,
+        }
+      },
+      methods: {
+        doConfirm(isChecked) {
+          const confirmInfo = this.confirm;
+          if (!confirmInfo) {
+            return true;
+          }
+
+          if (isChecked && confirmInfo.beforeCheck) {
+            return confirm(confirmInfo.beforeCheck);
+          } else if (!isChecked && confirmInfo.beforeUncheck) {
+            return confirm(confirmInfo.beforeUncheck);
+          }
+
+          return true;
+        },
+        async onChanged(event) {
+          this.pending = true;
+          const isChecked = this.checked;
+
+          if (!this.doConfirm(isChecked)) {
+            this.update(!isChecked);
+            this.syncUi(event);
+            return;
+          }
+
+          conf = {key: this.keyName, value: isChecked};
+          result = await this.$parent.apiPostJSON(
+            '/api/user_settings', conf);
+          if (result !== null) {
+            this.update(isChecked);
+          }
+        },
+        syncUi(event) {
+          event.target.checked = this.checked;
+        },
+        update(checked) {
+          if (checked !== undefined) {
+            this.checked = !!checked;
+            this.pending = false;
+          }
+        },
+        init(data) {
+          this.update(data[this.keyName]);
+        },
+      },
+    });
 
     Vue.component('server-list', {
       template: `
@@ -554,8 +617,6 @@
         version: null,
         speed: {},
         highestSpeed: 0,
-        allowFromLAN: false,
-        allowFromLANQuerying: true,
         appConf: {},
         feedList: [],
         activedServer: null,
@@ -587,7 +648,8 @@
         needsRestartApp() {
           app = this.appConf;
           anyAddr = app && app['listen_any_addr'];
-          return this.allowFromLAN && !anyAddr;
+          el = this.$refs['optAllowLan'];
+          return el?.checked && !anyAddr;
         },
       },
       methods: {
@@ -705,8 +767,11 @@
         },
         loadUserSetting() {
           fetchJSON('/api/user_settings', data => {
-            this.updateLANSetting(data.allow_lan);
-            this.appConf = data.app
+            this.appConf = data.app;
+            ['optSmartMode', 'optAllowLan'].forEach(name => {
+              el = this.$refs[name];
+              el.init(data);
+            });
           });
         },
         getServerSpeed(speedText) {
@@ -761,22 +826,6 @@
             this.updateHighestSpeed(result);
             this.speed = result;
           });
-        },
-        updateLANSetting(allowed) {
-          if (allowed !== undefined) {
-            this.allowFromLAN = !!allowed;
-            this.allowFromLANQuerying = false;
-          }
-        },
-        async setAllowFromLAN(event) {
-          const allowed = event.target.checked;
-          this.allowFromLANQuerying = true;
-          conf = {key: 'allow_lan', value: allowed};
-          result = await this.apiPostJSON('/api/user_settings', conf);
-          if (result !== null) {
-            this.updateLANSetting(allowed);
-          }
-          this.allowFromLANQuerying = false;
         },
         openAppFolder() {
           this.apiPostJSON('/api/simple_cmd', {cmd: 'open_app_folder'});

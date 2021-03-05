@@ -369,6 +369,7 @@ class ApiHandler:
         app_conf['listen_any_addr'] = self.app.listen_any_addr
 
         result = dict(user_conf)
+        result['smart_mode'] = self.app.smart_mode
         result['app'] = app_conf
         await req.result_ok(result)
 
@@ -386,6 +387,8 @@ class ApiHandler:
 
         if req_key == 'allow_lan':
             self.set_allow_lan(req_value)
+        elif req_key == 'smart_mode':
+            self.app.smart_mode = bool(req_value)
         else:
             raise ValueError(f'bad key name: {req_key}')
         await req.result_ok(payload)

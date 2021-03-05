@@ -41,6 +41,7 @@ class App:
         else:
             host_name, host_ip = 'local', ADDR_LOCAL
 
+        self.smart_mode = True
         self.http_server = None
         self.icons = AppIcons()
         self.tray_icon = None
@@ -83,16 +84,19 @@ class App:
             return
 
         backend_port = self.backend.port if self.backend else None
-        if is_direct or backend_port is None:
-            statistic.on_route('DIRECT', host, remote)
-            connection = await asyncio.open_connection(remote, port)
-        else:
+        real_direct = self.smart_mode and is_direct
+        over_proxy = (backend_port is not None) and not real_direct
+
+        if over_proxy:
             backend = aiosocks.Socks5Addr(self.backend.host, backend_port)
             statistic.on_route('PROXY', host, remote)
             dst = (host, port)  # Use domain-name to avoid DNS cache pollution
             connection = await aiosocks.open_connection(
                 proxy=backend, proxy_auth=None,
                 dst=dst, remote_resolve=True)
+        else:
+            statistic.on_route('DIRECT', host, remote)
+            connection = await asyncio.open_connection(remote, port)
 
         def statistic_(is_out, bytes_):
             statistic.on_transfer(not is_direct, is_out, bytes_)
