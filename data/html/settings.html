@@ -164,13 +164,21 @@
       }
 
       a.text-tag {
-        background: #b5d4ca;
         border-radius: 3px;
-        color: #2c8671;
         padding: 0px 4px;
         margin-right: 2px;
       }
 
+      a.text-tag[scheme="vmess"] {
+        background: #b5d4ca;
+        color: #2c8671;
+      }
+
+      a.text-tag[scheme="ssr"] {
+        background: #8fd2f4;
+        color: #10688b;
+        padding: 0 0.5em;
+      }
     </style>
   </head>
 
@@ -415,7 +423,7 @@
         <div class="server-list">
           <div class="feed-info card">
             <div class="feed-url-wrapper">
-              <a v-if="feedData.scheme" class="text-tag">{{feedData.scheme}}</a>
+              <a v-if="scheme" class="text-tag" :scheme="scheme">{{scheme}}</a>
               <input type="text" v-model="feedData.url" :title="feedData.url" readonly />
               <div class="feed-updated">
                 <a>{{serversUpdateTip}}</a>
@@ -497,6 +505,9 @@
             return `(updated ${interval})`;
           }
           return '';
+        },
+        scheme() {
+          return this.feedData.scheme;
         },
       },
       methods: {
