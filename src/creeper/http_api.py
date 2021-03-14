@@ -16,7 +16,8 @@ from creeper.log import logger
 from creeper.env import IS_DEBUG, APP_DIR, CONF_DIR, HTML_DIR, \
     USER_CONF, FILE_FEED_JSON, FILE_SPEED_JSON, FILE_CUR_NODE_JSON
 from creeper.utils import write_drain, fmt_exc, readable_exc, AttrDict
-from creeper.proxy.feed import add_feed, delete_feed, edit_feed, update_feed
+from creeper.proxy.feed import add_feed, delete_feed, edit_feed, \
+    update_feed, update_feed_conf
 from creeper.proxy.backend import backend_utilitys
 from creeper.components import statistic
 from creeper.components.measure import test_backend_speed
@@ -362,7 +363,7 @@ class ApiHandler:
         await req.result_ok(conf)
 
     async def api_get_settings(self, req):
-        keys = ['allow_lan']
+        keys = ['allow_lan', 'show_hidden_feeds']
         user_conf = [(key, USER_CONF[key]) for key in keys]
 
         app_conf = {}
@@ -389,6 +390,11 @@ class ApiHandler:
             self.set_allow_lan(req_value)
         elif req_key == 'smart_mode':
             self.app.smart_mode = bool(req_value)
+        elif req_key == 'show_hidden_feeds':
+            USER_CONF.show_hidden_feeds = bool(req_value)
+        elif req_key.startswith('hide_feed:'):
+            feed_uid = req_key.split(':')[1]
+            await update_feed_conf(feed_uid, hidden=bool(req_value))
         else:
             raise ValueError(f'bad key name: {req_key}')
         await req.result_ok(payload)

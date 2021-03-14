@@ -102,6 +102,10 @@
         justify-content: center;
       }
 
+      .server-lists[hiding-enabled] .server-list[hidden] {
+        display: none;
+      }
+
       .server-list {
         display: inline-block;
         margin: 10px;
@@ -114,6 +118,10 @@
 
       .server-list table {
         width: 100%;
+      }
+
+      .server-list[hidden] {
+        opacity: 0.6;
       }
 
       .ctrl-panel {
@@ -189,20 +197,30 @@
           <a>{{versionText}}</a>
         </div>
         <div class="separator"></div>
-        <check-opt ref="optSmartMode" key-name="smart_mode" label="Smart Mode"
+        <user-settings-option
+          key-name="smart_mode"
+          label="Smart Mode"
           :confirm="{beforeUncheck: 'Are you sure you want to disable SMART mode?'}">
-        </check-opt>
-        <check-opt ref="optAllowLan" key-name="allow_lan" label="Allow from LAN">
+        </user-settings-option>
+        <user-settings-option
+          key-name="allow_lan"
+          label="Allow from LAN">
           <span v-if="needsRestartApp">
             (<a style="color: #e80c0c;">Needs Restart</a>)
           </span>
-        </check-opt>
+        </user-settings-option>
+        <user-settings-option
+          key-name="show_hidden_feeds"
+          :label="'Hidden Feeds (' + hiddenFeedsNum + ')'">
+        </user-settings-option>
         <div class="separator"></div>
         <button @click="openAppFolder">App Folder</button>
         <button @click="openMonitor">Monitor</button>
         <button @click="addFeed">Add Feed</button>
       </div>
-      <div class="server-lists">
+      <div
+        class="server-lists"
+        :hiding-enabled="!userSettings.show_hidden_feeds">
         <server-list
           v-for="item in feedList"
           :feed-data="item"
@@ -356,22 +374,37 @@
         <label>
           <input
             type="checkbox"
-            v-model="checked"
-            :disabled="pending"
+            :checked="getValue()"
+            @input="e => setValue(e.target.checked)"
+            :disabled="!loaded || pending"
             @change="onChanged($event)"
           />
           {{label}}
           <slot></slot>
         </label>
       `,
-      props: ['keyName', 'label', 'confirm'],
+      props: {
+        keyName: String,
+        label: String,
+        value: Object, /* (v-model) */
+        loaded: {
+          type: Boolean,
+          default: true,
+        },
+        confirm: Object,
+      },
       data() {
         return {
-          checked: false,
-          pending: true,
+          pending: false,
         }
       },
       methods: {
+        getValue() {
+          return this.value;
+        },
+        setValue(checked) {
+          this.$emit('input', checked);
+        },
         doConfirm(isChecked) {
           const confirmInfo = this.confirm;
           if (!confirmInfo) {
@@ -388,39 +421,51 @@
         },
         async onChanged(event) {
           this.pending = true;
-          const isChecked = this.checked;
+          const isChecked = this.getValue();
+
+          this.update(!isChecked);
+          this.syncUi(event);
 
           if (!this.doConfirm(isChecked)) {
-            this.update(!isChecked);
-            this.syncUi(event);
             return;
           }
 
           conf = {key: this.keyName, value: isChecked};
-          result = await this.$parent.apiPostJSON(
+          result = await this.$root.apiPostJSON(
             '/api/user_settings', conf);
           if (result !== null) {
             this.update(isChecked);
           }
         },
         syncUi(event) {
-          event.target.checked = this.checked;
+          event.target.checked = this.getValue();
         },
         update(checked) {
           if (checked !== undefined) {
-            this.checked = !!checked;
+            this.setValue(!!checked);
             this.pending = false;
           }
-        },
-        init(data) {
-          this.update(data[this.keyName]);
         },
       },
     });
 
+    Vue.component('user-settings-option', {
+      template: `
+        <check-opt
+          v-model="$root.userSettings[keyName]"
+          :loaded="$root.userSettingsLoaded"
+          :key-name="keyName"
+          :label="label"
+          :confirm="confirm">
+          <slot></slot>
+        </check-opt>
+      `,
+      props: ['keyName', 'label', 'confirm'],
+    });
+
     Vue.component('server-list', {
       template: `
-        <div class="server-list">
+        <div class="server-list" :hidden="feedData.hidden">
           <div class="feed-info card">
             <div class="feed-url-wrapper">
               <a v-if="scheme" class="text-tag" :scheme="scheme">{{scheme}}</a>
@@ -436,6 +481,13 @@
                     Duplicates ({{duplicateNumber}})
                 </label>
                 <label><input type="checkbox" v-model="showExtraInfo" />Details</label>
+                <check-opt
+                  v-model="feedData.hidden"
+                  :loaded="true"
+                  :key-name="'hide_feed:' + feedData.uid"
+                  label="Hidden"
+                >
+                </check-opt>
               </div>
               <div>
                 <button @click="editFeedUrl()">Edit</button>
@@ -628,9 +680,10 @@
         version: null,
         speed: {},
         highestSpeed: 0,
-        appConf: {},
         feedList: [],
         activedServer: null,
+        userSettings: {},
+        userSettingsLoaded: false,
       },
       mounted() {
         fetchJSON('/version.json', data => this.version = data);
@@ -657,10 +710,12 @@
           return `${name} ${v.verison} (${v.build})`;
         },
         needsRestartApp() {
-          app = this.appConf;
+          app = this.userSettings?.app;
           anyAddr = app && app['listen_any_addr'];
-          el = this.$refs['optAllowLan'];
-          return el?.checked && !anyAddr;
+          return this.userSettings.allow_lan && !anyAddr;
+        },
+        hiddenFeedsNum() {
+          return this.feedList.filter(x => x.hidden).length;
         },
       },
       methods: {
@@ -729,6 +784,10 @@
               proxy.uid = this.makeProxyUID(item.scheme, proxy);
               proxy.testing = false;
             });
+
+            if (item.hidden === undefined) {
+              item.hidden = false;
+            }
           });
 
           return items;
@@ -778,11 +837,8 @@
         },
         loadUserSetting() {
           fetchJSON('/api/user_settings', data => {
-            this.appConf = data.app;
-            ['optSmartMode', 'optAllowLan'].forEach(name => {
-              el = this.$refs[name];
-              el.init(data);
-            });
+            this.userSettings = data;
+            this.userSettingsLoaded = true;
           });
         },
         getServerSpeed(speedText) {

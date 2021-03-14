@@ -226,9 +226,16 @@ async def update_feed(uid):
     feed_item = next(feed_by_uid(feed_list, uid))
 
     feed = await fetch_feed(feed_item['url'])
-    feed['uid'] = uid
-
-    feed_item.clear()
+    feed.pop('uid', None)
     feed_item.update(**feed)
+
     write_feed(feed_list)
-    return feed
+    return feed_item
+
+
+async def update_feed_conf(uid, **kwargs):
+    feed_list = read_feed()
+    feed_item = next(feed_by_uid(feed_list, uid))
+
+    feed_item.update(**kwargs)
+    write_feed(feed_list)
