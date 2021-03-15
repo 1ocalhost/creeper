@@ -18,6 +18,10 @@ class FeedParseError(Exception):
     pass
 
 
+class EmptyResponse(Exception):
+    pass
+
+
 def fetch_url_content_impl(url):
     hdr = {'User-Agent': 'Client App'}
     logger.debug(f'fetch feed: {url}')
@@ -149,11 +153,14 @@ def make_feed_data(url, content=None):
 
 async def fetch_feed(feed_url):
     content = await fetch_url_content(feed_url)
+    if not content:
+        raise EmptyResponse(feed_url)
+
     try:
         return make_feed_data(feed_url, content)
     except Exception as exc:
         logger.error(readable_exc(exc))
-        raise FeedParseError()
+        raise FeedParseError(feed_url)
 
 
 def read_feed():
