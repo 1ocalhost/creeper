@@ -4,6 +4,8 @@ import urllib.parse
 
 from creeper.log import logger
 from creeper.utils import run_async, readable_exc
+from creeper.impl.socks5 import \
+    try_negotiate_socks5, end_negotiate_socks5
 
 
 all_clients = {}
@@ -52,12 +54,17 @@ def remore_useless_header(header):
     return list(filter(not_proxy_keep_alive, header))
 
 
-async def get_request_info_from_header(reader):
+async def get_request_info_from_header(reader, writer):
+    did_return, result = await try_negotiate_socks5(reader, writer)
+    if did_return:
+        return result
+
     header = await read_http_header(reader)
     if not header:
         logger.debug('failed to read header')
         return
 
+    header = result + header
     header_items = header.decode().split('\r\n')
     method_args = header_items[0].split(' ')
     method = method_args[0]
@@ -120,7 +127,7 @@ async def open_connection_exc(opt, host, port):
 
 
 async def open_peer_connection(reader, writer, opt):
-    req_info = await get_request_info_from_header(reader)
+    req_info = await get_request_info_from_header(reader, writer)
     if req_info is None:
         return
 
@@ -139,6 +146,20 @@ async def open_peer_connection(reader, writer, opt):
     return peer, header, tunnel_mode, statistic
 
 
+async def end_negotiate(statistic, tunnel_mode, header, writer, peer_writer):
+    if tunnel_mode:
+        is_socks5 = header is None
+        if is_socks5:
+            end_negotiate_socks5(writer, peer_writer)
+        else:
+            writer.write(b'HTTP/1.1 200 Connection established\r\n\r\n')
+        await writer.drain()
+    else:
+        peer_writer.write(header)
+        statistic(True, len(header))
+        await peer_writer.drain()
+
+
 async def server_handler_impl(reader, writer, opt):
     peer_connection = await open_peer_connection(reader, writer, opt)
     if peer_connection is None:
@@ -148,13 +169,8 @@ async def server_handler_impl(reader, writer, opt):
     peer_reader, peer_writer = peer
 
     try:
-        if tunnel_mode:
-            writer.write(b'HTTP/1.1 200 Connection established\r\n\r\n')
-            await writer.drain()
-        else:
-            peer_writer.write(header)
-            statistic(True, len(header))
-            await peer_writer.drain()
+        await end_negotiate(
+            statistic, tunnel_mode, header, writer, peer_writer)
         await relay_stream(
             statistic, reader, writer, peer_reader, peer_writer)
     finally:

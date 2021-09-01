@@ -6,6 +6,7 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/src/__main__.py",
+            "justMyCode": false,
             "env": {
                 "PYTHONPYCACHEPREFIX": "${env:TEMP}\\pycache",
                 "CREEPER_DBG_MODE": "1",

@@ -1,6 +1,6 @@
 {
     "name": "creeper",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "dependencies": [
         {
             "path": "data/bin/ssrwin.exe",
@@ -16,7 +16,7 @@
         },
         {
             "path": "data/conf/vendor/cn_ip.txt",
-            "sha256": "e5d6e1480851f9469b17098ecb16456dbf200e22b03967cb1e07d01692b234d8",
+            "sha256": "f9130dc3f5762610be6f68230eec56ac00e308f482bbbc64f9171ccaf7cb1689",
             "download_url": "https://github.com/17mon/china_ip_list/raw/master/china_ip_list.txt"
         },
         {
