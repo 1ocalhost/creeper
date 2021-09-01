@@ -203,7 +203,7 @@ def launcher_lnk(folder):
 
 
 def uninstaller_lnk(folder):
-    return folder / 'Uninstall.lnk'
+    return folder / f'{APP_NAME} Uninstaller.lnk'
 
 
 def install_app_impl():

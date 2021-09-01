@@ -9,7 +9,7 @@ from urllib.parse import parse_qsl, urlsplit
 
 from creeper.env import CONF_DIR, FILE_FEED_JSON
 from creeper.log import logger
-from creeper.utils import _MiB, readable_exc, write_json_file
+from creeper.utils import _MiB, readable_exc, write_json_file, open_url
 
 FEED_FILE_PATH = CONF_DIR / FILE_FEED_JSON
 
@@ -26,7 +26,7 @@ def fetch_url_content_impl(url):
     hdr = {'User-Agent': 'Client App'}
     logger.debug(f'fetch feed: {url}')
     req = urllib.request.Request(url, headers=hdr)
-    response = urllib.request.urlopen(req, timeout=10)
+    response = open_url(req, None, timeout=10)
     return response.read().decode()
 
 

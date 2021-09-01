@@ -7,6 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/src/__main__.py",
             "env": {
+                "PYTHONPYCACHEPREFIX": "${env:TEMP}\\pycache",
                 "CREEPER_DBG_MODE": "1",
                 "CREEPER_NO_BACKEND": "1",
                 "CREEPER_MAIN_PORT": "1081"

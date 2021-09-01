@@ -1,15 +1,9 @@
 import asyncio
-import socks
 import json
-
 import multiprocessing.dummy as multiprocessing
-import urllib.request as request
-
 from types import SimpleNamespace
-from urllib.parse import urlparse
-from sockshandler import SocksiPyHandler
 
-from creeper.utils import _KiB, _MiB, now, fmt_exc
+from creeper.utils import _KiB, _MiB, now, fmt_exc, open_url
 from creeper.env import CONF_DIR, APP_CONF, FILE_SPEED_JSON
 from creeper.proxy.backend import Backend
 
@@ -67,44 +61,6 @@ class CancellablePool:
         self.shutdown()
 
 
-def _parse_host_port(netloc):
-    tokens = netloc.split(':')
-    if len(tokens) >= 2:
-        port = int(tokens[1])
-    else:
-        port = 0
-
-    return tokens[0], port
-
-
-def _make_proxy_request(proxy_url):
-    url = urlparse(proxy_url)
-    host, port = _parse_host_port(url.netloc)
-
-    if (url.scheme == 'http'):
-        type_ = socks.HTTP
-    elif (url.scheme == 'socks4'):
-        type_ = socks.SOCKS4
-    elif (url.scheme == 'socks5'):
-        type_ = socks.SOCKS5
-    else:
-        type_ = None
-
-    if type_ is None:
-        if proxy_url is not None:
-            raise ValueError('bad proxy URL')
-    else:
-        if not port:
-            port = socks.DEFAULT_PORTS[type_]
-
-    if type_ is None:
-        proxy_handler = request.ProxyHandler(None)
-    else:
-        proxy_handler = SocksiPyHandler(type_, host, port)
-
-    return request.build_opener(proxy_handler)
-
-
 class SpeedTest:
     MAX_DOWNLOAD_SIZE = 15 * _MiB
     READ_SIZE = 10 * _KiB
@@ -131,12 +87,7 @@ class SpeedTest:
         shared = self.shared
         shared.start_time = now()
 
-        if self.proxy:
-            opener = _make_proxy_request(self.proxy)
-            self.page = opener.open(self.url)
-        else:
-            self.page = request.urlopen(self.url)
-
+        self.page = open_url(self.url, self.proxy)
         data = self.page.read(1)
         shared.start_dl_time = now()
         self._append_dl_data(data)
