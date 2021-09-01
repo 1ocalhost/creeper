@@ -146,7 +146,7 @@ class BackendUtilityV2Ray(BackendUtility):
         data = AttrDict(data.conf)
         user = {
             'id': data.id,
-            'alterId': data.aid,
+            'alterId': int(data.aid),
             'security': 'auto',
             'level': 0
         }
@@ -156,7 +156,7 @@ class BackendUtilityV2Ray(BackendUtility):
             'settings': {
                 'vnext': [{
                     'address': data.add,
-                    'port': data.port,
+                    'port': int(data.port),
                     'users': [user]
                 }]
             },
