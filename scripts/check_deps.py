@@ -36,8 +36,8 @@ def try_setup_proxy():
         return
     did_setup_proxy = True
 
-    http_proxy = os.environ.get('http_proxy')
-    print(f'env http_proxy={http_proxy}')
+    http_proxy = os.environ.get('creeper_proxy')
+    print(f'using proxy: {http_proxy}')
 
     if not http_proxy:
         return
