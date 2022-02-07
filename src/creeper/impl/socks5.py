@@ -68,7 +68,9 @@ async def try_negotiate_socks5(reader, writer):
 
 
 def end_negotiate_socks5(writer, peer_writer):
-    host, port = peer_writer.get_extra_info('peername')
-    writer.write(b'\x05\x00\x00\x01')
-    writer.write(socket.inet_pton(socket.AF_INET, host))
-    writer.write(port.to_bytes(2, 'big'))
+    host, port = '1.2.3.4', 1234
+    response = b'\x05\x00\x00'
+    response += b'\x01'  # IPv4
+    response += socket.inet_pton(socket.AF_INET, host)
+    response += port.to_bytes(2, 'big')
+    writer.write(response)
