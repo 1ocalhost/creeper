@@ -1,6 +1,6 @@
 {
     "name": "creeper",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "dependencies": [
         {
             "path": "data/bin/ssrwin.exe",
@@ -10,13 +10,13 @@
         },
         {
             "path": "data/bin/v2ray.exe",
-            "sha256": "808ef45efadc0ca908a5a7f33c2edd4daa847fa64619c8c0dcf3f92d228431f8",
+            "sha256": "580abfdd3a93933d50b4813eb9aeb867227f32b274b2f23da3c8875c21bfa060",
             "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/v2ray.exe.zip",
             "uncompress": "zip!v2ray.exe"
         },
         {
             "path": "data/conf/vendor/cn_ip.txt",
-            "sha256": "f9130dc3f5762610be6f68230eec56ac00e308f482bbbc64f9171ccaf7cb1689",
+            "sha256": "195adb4dab43b3b368a79db08b423c2f201f07bc08d8bffa6e40f991661482a9",
             "download_url": "https://github.com/17mon/china_ip_list/raw/master/china_ip_list.txt"
         },
         {

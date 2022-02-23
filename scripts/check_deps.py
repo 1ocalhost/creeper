@@ -81,6 +81,8 @@ def unzip(zip_file, item_path, out_path):
 
 def uncompress(dependency, dl_path, path):
     conf = dependency.get('uncompress')
+    path.unlink(missing_ok=True)
+
     if not conf:
         os.rename(dl_path, path)
         return
