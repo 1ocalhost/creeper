@@ -25,6 +25,8 @@ from creeper.components.diagnosis import diagnosis_network
 from creeper.impl.win_utils import shell_execute
 
 MIME_HTML = 'text/html'
+MIME_CSS = 'text/css'
+MIME_JS = 'text/javascript; charset=utf-8'
 MIME_JSON = 'application/json'
 MIME_ICON = 'image/x-icon'
 
@@ -217,6 +219,8 @@ def suffix_to_mime(file_name):
     unknown_mime = 'application/octet-stream'
     mime_table = {
         'html': MIME_HTML,
+        'js': MIME_JS,
+        'css': MIME_CSS,
         'json': MIME_JSON,
         'ico': MIME_ICON,
     }
@@ -300,6 +304,7 @@ class ApiHandler:
         self.route('POST', '/api/update_feed', self.api_update_feed)
         self.route('POST', '/api/test_speed', self.api_test_speed)
         self.route('POST', '/api/switch_node', self.api_switch_node)
+        self.route('POST', '/api/node_config', self.api_node_config)
         self.route('GET ', '/api/user_settings', self.api_get_settings)
         self.route('POST', '/api/user_settings', self.api_set_settings)
         self.route('GET ', '/api/diagnosis', self.api_diagnosis)
@@ -361,6 +366,12 @@ class ApiHandler:
         await backend_utilitys.restart(self.app.backend, AttrDict(conf))
         self.app.pac_server.update_sys_setting(True)
         await req.result_ok(conf)
+
+    async def api_node_config(self, req):
+        conf = await read_json_body(req)
+        full_conf = backend_utilitys.get_full_conf(AttrDict(conf))
+        _, conf_content = full_conf
+        await req.result_ok(conf_content)
 
     async def api_get_settings(self, req):
         keys = ['allow_lan', 'show_hidden_feeds']

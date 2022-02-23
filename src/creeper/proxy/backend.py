@@ -203,16 +203,21 @@ class BackendUtilitys:
             return self.guess_util()
         return self.utilitys[conf.type]
 
+    def get_full_conf(self, conf):
+        for type_, util in self.utilitys.items():
+            if type_ == conf.type:
+                conf_data = util.make_conf_data(conf)
+                return util.conf_file, conf_data
+
     def switch_conf_file(self, conf):
         for util in self.utilitys.values():
             util.conf_file.unlink(True)
 
         write_json_file(CONF_DIR / FILE_CUR_NODE_JSON, conf)
-        for type_, util in self.utilitys.items():
-            if type_ == conf.type:
-                conf_data = util.make_conf_data(conf)
-                write_json_file(util.conf_file, conf_data)
-                break
+        full_conf = self.get_full_conf(conf)
+        if full_conf:
+            conf_file, conf_data = full_conf
+            write_json_file(conf_file, conf_data)
 
     async def restart(self, backend, conf):
         self.switch_conf_file(conf)

@@ -1,193 +1,22 @@
+<!DOCTYPE html>
 <html>
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <meta http-equiv="content-type" content="text/html;charset=utf-8">
-    <link rel="icon" href="/img/creeper.png"/>
+    <link rel="icon" href="/img/creeper.png">
     <title>Settings - Creeper</title>
+    <link href="/css/vue-simple-context-menu-3.4.2.css" rel="stylesheet" type="text/css">
+    <link href="/css/settings.css" rel="stylesheet" type="text/css">
+    <!-- development version of Vue -->
+    <!-- <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.11/vue.min.js"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer">
+    </script> -->
     <script src="/js/vue-2.6.11.min.js"></script>
-    <style>
-      html {
-        font-family: arial,sans-serif, 'Microsoft Yahei';
-        color: #212121;
-      }
-
-      *, *:before, *:after {
-        -moz-box-sizing: border-box;
-        -webkit-box-sizing: border-box;
-        box-sizing: border-box;
-      }
-
-      body {
-        background: #f9f9f9;
-      }
-
-      html, body {
-        width: 100%;
-        margin: 0;
-        padding: 0;
-      }
-
-      #page-content {
-        width: 100%;
-        margin: 10px auto;
-      }
-
-      thead th {
-        font-weight: 400;
-        background: #8a97a0;
-        color: #FFF;
-      }
-
-      tr {
-        background: #d8e3e6;
-      }
-
-      tr:nth-child(even) {
-        background: #e8eeef;
-      }
-
-      th, td {
-        text-align: left;
-        padding: 4px 10px;
-      }
-
-      .card {
-        border: 1px solid #8a97a0;
-        border-radius: 3px;
-        box-shadow: rgba(0, 0, 0, 0.05) 0px 1px 2px 0px,
-          rgba(0, 0, 0, 0.05) 0px 1px 4px 0px,
-          rgba(0, 0, 0, 0.05) 0px 2px 8px 0px;
-      }
-
-      .feed-info {
-        background-color: #e8eef3;
-        padding: 5px;
-        margin-bottom: 5px;
-      }
-
-      .feed-updated {
-        display: flex;
-        flex-direction: column-reverse;
-      }
-
-      .feed-url-wrapper a,
-      .feed-url-wrapper input {
-        color: #333333;
-        font-size: 80%;
-      }
-
-      .feed-url-wrapper {
-        display: flex;
-        padding-left: 2px;
-      }
-
-      .feed-url-wrapper >input {
-        flex: 1;
-        outline: none;
-        border: none;
-        background: transparent;
-        text-overflow: ellipsis;
-      }
-
-      .feed-op-buttons {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 5px;
-      }
-
-      .server-lists {
-        width: 100%;
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-      }
-
-      .server-lists[hiding-enabled] .server-list[hidden] {
-        display: none;
-      }
-
-      .server-list {
-        display: inline-block;
-        margin: 10px;
-      }
-
-      .server-list tr.duplicate,
-      .server-list tr.duplicate .extra-info {
-        color: #2d2d2d99;
-      }
-
-      .server-list table {
-        width: 100%;
-      }
-
-      .server-list[hidden] {
-        opacity: 0.6;
-      }
-
-      .ctrl-panel {
-        width: max-content;
-        margin: 5px auto;
-        background-color: #e8eef3;
-        border: 1px solid #5a5a5a78;
-        padding: 10px 20px;
-      }
-
-      .ctrl-panel .separator {
-        border-top: 1px dashed #5a5a5a78;
-        margin: 10px 0;
-      }
-
-      .version {
-        text-align: center;
-      }
-
-      .version a {
-        color: #555f94;
-        text-shadow: 0 0 8px #bfbfbf80;
-      }
-
-      .extra-info {
-        color: #73828c;
-        font-size: 75%;
-      }
-
-      table.core-content-only .extra-info {
-        display: none;
-      }
-
-      label {
-        font-size: 90%;
-      }
-
-      label[disabled] {
-        opacity: 0.6;
-      }
-
-      input, button, label {
-        user-select: none;
-      }
-
-      tr.actived td:first-child a:first-child::after {
-        content: " \2705\FE0F";
-      }
-
-      a.text-tag {
-        border-radius: 3px;
-        padding: 0px 4px;
-        margin-right: 2px;
-      }
-
-      a.text-tag[scheme="vmess"] {
-        background: #b5d4ca;
-        color: #2c8671;
-      }
-
-      a.text-tag[scheme="ssr"] {
-        background: #8fd2f4;
-        color: #10688b;
-        padding: 0 0.5em;
-      }
-    </style>
+    <script src="/js/vue-simple-context-menu-3.4.2.min.js"></script>
+    <script src="/js/clipboard-2.0.10.min.js"></script>
+    <script src="/js/settings_component.js"></script>
   </head>
 
   <body>
@@ -230,6 +59,31 @@
           @delete-feed="deleteFeed"
           @update-feed="updateFeed"
         />
+      </div>
+      <div comment="i donot know why but keep this wrapper div">
+        <vue-simple-context-menu
+          :element-id="'popupMenuId'"
+          :options="popupMenuOptions"
+          :ref="'popupMenu'"
+          @option-clicked="menuOptionClicked"
+        />
+      </div>
+      <div class="dialog-wrapper" v-show="showDialog" @click.self="showDialog = false">
+        <div class="dialog-window">
+          <div class="dialog-title">{{dialogTitle}}</div>
+          <div id="dialog-content" class="code-font">{{dialogContent}}</div>
+          <div style="display: flex; justify-content: center; margin-top: 1em;">
+            <button
+              class="clipboard-button"
+              data-clipboard-target="#dialog-content"
+              :disabled="!dialogContent"
+            >
+              Copy
+            </button>
+            <span style="width: 1em;"></span>
+            <button @click="showDialog = false">OK</button>
+          </div>
+        </div>
       </div>
     </div>
   </body>
@@ -361,318 +215,15 @@
     }
 
     function isSpecialItem(item, index) {
-      if (index >= 5) {
-        return false;
-      }
+      const host = item.conf.server
+      if ((host.match(/\./g) || []).length <= 1)
+        return true;  // use top domain
 
-      const port = parseInt(item.conf.server_port);
-      return port < 10 || [10086].includes(port);
+      if (['1.1.1.1'].includes(host))
+        return true;
+
+      return false;
     }
-
-    Vue.component('check-opt', {
-      template: `
-        <label>
-          <input
-            type="checkbox"
-            :checked="getValue()"
-            @input="e => setValue(e.target.checked)"
-            :disabled="!loaded || pending"
-            @change="onChanged($event)"
-          />
-          {{label}}
-          <slot></slot>
-        </label>
-      `,
-      props: {
-        keyName: String,
-        label: String,
-        value: Object, /* (v-model) */
-        loaded: {
-          type: Boolean,
-          default: true,
-        },
-        confirm: Object,
-      },
-      data() {
-        return {
-          pending: false,
-        }
-      },
-      methods: {
-        getValue() {
-          return this.value;
-        },
-        setValue(checked) {
-          this.$emit('input', checked);
-        },
-        doConfirm(isChecked) {
-          const confirmInfo = this.confirm;
-          if (!confirmInfo) {
-            return true;
-          }
-
-          if (isChecked && confirmInfo.beforeCheck) {
-            return confirm(confirmInfo.beforeCheck);
-          } else if (!isChecked && confirmInfo.beforeUncheck) {
-            return confirm(confirmInfo.beforeUncheck);
-          }
-
-          return true;
-        },
-        async onChanged(event) {
-          this.pending = true;
-          const isChecked = this.getValue();
-
-          this.update(!isChecked);
-          this.syncUi(event);
-
-          if (!this.doConfirm(isChecked)) {
-            return;
-          }
-
-          conf = {key: this.keyName, value: isChecked};
-          result = await this.$root.apiPostJSON(
-            '/api/user_settings', conf);
-          if (result !== null) {
-            this.update(isChecked);
-          }
-        },
-        syncUi(event) {
-          event.target.checked = this.getValue();
-        },
-        update(checked) {
-          if (checked !== undefined) {
-            this.setValue(!!checked);
-            this.pending = false;
-          }
-        },
-      },
-    });
-
-    Vue.component('user-settings-option', {
-      template: `
-        <check-opt
-          v-model="$root.userSettings[keyName]"
-          :loaded="$root.userSettingsLoaded"
-          :key-name="keyName"
-          :label="label"
-          :confirm="confirm">
-          <slot></slot>
-        </check-opt>
-      `,
-      props: ['keyName', 'label', 'confirm'],
-    });
-
-    Vue.component('server-list', {
-      template: `
-        <div class="server-list" :hidden="feedData.hidden">
-          <div class="feed-info card">
-            <div class="feed-url-wrapper">
-              <a v-if="scheme" class="text-tag" :scheme="scheme">{{scheme}}</a>
-              <input type="text" v-model="feedData.url" :title="feedData.url" readonly />
-              <div class="feed-updated">
-                <a>{{serversUpdateTip}}</a>
-              </div>
-            </div>
-            <div class="feed-op-buttons">
-              <div style="margin-right: 15px;">
-                <label :disabled="!duplicateNumber">
-                  <input type="checkbox" v-model="showDuplicate" :disabled="!duplicateNumber" />
-                    Duplicates ({{duplicateNumber}})
-                </label>
-                <label><input type="checkbox" v-model="showExtraInfo" />Details</label>
-                <check-opt
-                  v-model="feedData.hidden"
-                  :loaded="true"
-                  :key-name="'hide_feed:' + feedData.uid"
-                  label="Hidden"
-                >
-                </check-opt>
-              </div>
-              <div>
-                <button @click="editFeedUrl()">Edit</button>
-                <button @click="$emit('delete-feed', feedData)" style="color: #e80c0c;">Remove</button>
-                <button :disabled="!feedData.url || isUpdatingFeed" @click="emitUpdateFeed()">
-                  {{isUpdatingFeed ? 'Updating' : 'Update'}}
-                </button>
-                <button @click="testAllNodesOrStop()">
-                  {{isTestingSpeed ? 'Stop Test' : 'Test'}}
-                </button>
-              </div>
-            </div>
-          </div>
-          <div v-if="feedData.proxies.length" class="card">
-            <table :class="{'core-content-only': !showExtraInfo}">
-              <thead>
-                <tr>
-                  <th>Server</th>
-                  <th>Speed</th>
-                  <th>Operation</th>
-                </tr>
-              </thead>
-              <tr v-for="(item, index) in feedData.proxies"
-                :class="serverItemClass(item)"
-                v-show="showDuplicate || !item.duplicate">
-                <td>
-                  <a>{{item.conf.remark}}</a><br />
-                  <a class="extra-info">{{item.uid}}</a>
-                </td>
-                <td>
-                  <a :title="getNodeSpeed(item)?.title" :style="speedStyle(item)">
-                    {{speedText(item)}}
-                  </a><br />
-                  <a class="extra-info">{{getNodeSpeed(item)?.update}}</a>
-                </td>
-                <td>
-                  <span v-if="canTestSpeed(item, index)">
-                    <button @click="emitTestNode(item)">Test</button>
-                    <button @click="$emit('switch-node', item)">Switch</button>
-                  </span>
-                </td>
-              </tr>
-            </table>
-          </div>
-          </div>
-        </div>
-      `,
-      props: ['feedData'],
-      data() {
-        return {
-          showDuplicate: false,
-          showExtraInfo: false,
-          isUpdatingFeed: false,
-          isTestingSpeed: false,
-        }
-      },
-      computed: {
-        duplicateNumber() {
-          return this.feedData.proxies.filter(
-            item => item.duplicate
-          ).length;
-        },
-        serversUpdateTip() {
-          const updatedTime = this.feedData.update;
-          if (updatedTime) {
-            const interval = timeDiffFromNow(updatedTime);
-            return `(updated ${interval})`;
-          }
-          return '';
-        },
-        scheme() {
-          return this.feedData.scheme;
-        },
-      },
-      methods: {
-        async editFeedUrl() {
-          const feedUrl = this.feedData.url;
-          const url = promptURL('Edit Feed URL', feedUrl);
-          if (url === null) {
-            return;
-          }
-
-          this.$emit('edit-feed', this.feedData.uid, url, (result) => {
-            if (result !== null) {
-              this.feedData.url = url;
-            }
-          });
-        },
-        serverItemClass(item) {
-          if (item.duplicate) {
-            return {duplicate: true};
-          }
-
-          const activedServer = this.$parent.activedServer;
-          const actived = (activedServer && item.uid === activedServer);
-          return {
-            actived,
-            testing: item.testing,
-          };
-        },
-        canTestSpeed(item, index) {
-          if (item.conf.server_port === undefined) {
-            return false;
-          }
-
-          if (item.duplicate) {
-            return false;
-          }
-
-          if (isSpecialItem(item, index)) {
-            return false;
-          }
-
-          return true;
-        },
-        getNodeSpeed(item) {
-          if (item.testing) {
-            return {
-              update: '...',
-              result: '\uD83C\uDFCD\uFE0F Testing...',
-            };
-          }
-          return this.$parent.speed[item.uid];
-        },
-        speedText(item) {
-          if (item.duplicate) {
-            return;
-          }
-          return this.getNodeSpeed(item)?.result;
-        },
-        speedStyle(item) {
-          const highestSpeed = this.$parent.highestSpeed;
-          const speed = this.getNodeSpeed(item)?.speedNum;
-          if (speed === null || speed === undefined || !highestSpeed) {
-            return {
-              'color': '#c5ae08',
-            };
-          }
-
-          const colorSlow = [11, 75, 215];
-          const colorFast = [255, 0, 191];
-
-          let rgb = [];
-          for (var i = 0; i < 3; ++i) {
-            const colorDiff = colorFast[i] - colorSlow[i];
-            rgb[i] = colorDiff * (speed / highestSpeed) + colorSlow[i];
-          }
-
-          return {
-            'color': `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`,
-          };
-        },
-        async testAllNodesOrStop() {
-          if (this.isTestingSpeed) {
-            this.isTestingSpeed = false;
-            return;
-          }
-
-          this.isTestingSpeed = true;
-          const proxies = this.feedData.proxies;
-          for (const [index, proxy] of proxies.entries()) {
-            if (!this.isTestingSpeed || !this.canTestSpeed(proxy, index)) {
-              continue;
-            }
-            await new Promise(resolve => this.emitTestNode(proxy, resolve));
-          }
-          this.isTestingSpeed = false;
-        },
-        emitTestNode(item, callback) {
-          item.testing = true;
-          this.$emit('test-node', item, () => {
-            item.testing = false;
-            if (callback) {
-              callback();
-            }
-          });
-        },
-        emitUpdateFeed() {
-          this.isUpdatingFeed = true;
-          this.$emit('update-feed', this.feedData.uid, (result) => {
-            this.isUpdatingFeed = false;
-          });
-        },
-      },
-    });
 
     new Vue({
       el: '#page-content',
@@ -684,8 +235,17 @@
         activedServer: null,
         userSettings: {},
         userSettingsLoaded: false,
+        popupMenuOptions: [
+          { name: 'View Feed', id: 'view-feed' },
+          { name: 'View Config', id: 'view-conf' },
+        ],
+        showDialog: false,
+        dialogTitle: '',
+        dialogContent: '',
       },
       mounted() {
+        new ClipboardJS('.clipboard-button');
+
         fetchJSON('/version.json', data => this.version = data);
 
         fetchJSON('/feed.json', data => {
@@ -963,6 +523,30 @@
             this.opFeedByUID(uid, this.$set, feed);
           }
           callback(result);
+        },
+        async menuOptionClicked(event) {
+          const optionId = event.option.id;
+          let viewType = '';
+          let viewContent = '';
+
+          if (optionId === 'view-feed') {
+            viewType = 'Feed';
+            viewContent = JSON.stringify(event.item.conf, null, 4);
+          } else if (optionId === 'view-conf') {
+            const result = await this.apiPostJSON('/api/node_config', event.item);
+            if (result === null)
+              return;
+
+            viewType = 'Config';
+            viewContent = JSON.stringify(result, null, 4);
+          } else {
+            console.warn(`unknown: ${optionId}`);
+            return;
+          }
+
+          this.dialogTitle = event.item.conf.remark + ` - ${viewType}`;
+          this.dialogContent = viewContent;
+          this.showDialog = true;
         },
       },
     });
