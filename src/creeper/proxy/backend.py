@@ -121,7 +121,9 @@ class BackendUtilityV2Ray(BackendUtility):
 
     def _stream_setting(self, data):
         result = {'network': data.net}
-        if data.net == 'ws':
+        if data.net == 'tcp':
+            pass
+        elif data.net == 'ws':
             result['wsSettings'] = {
                 'connectionReuse': True,
                 'path': data.path,
@@ -129,16 +131,21 @@ class BackendUtilityV2Ray(BackendUtility):
                     'Host': data.host
                 }
             }
-        elif data.net == 'tcp' and data.type == 'none':
-            if data.tls == 'tls':
-                tls_settings = {'allowInsecure': True}
-                if data.host:
-                    tls_settings['serverName'] = data.host
-
-                result['security'] = 'tls'
-                result['tlsSettings'] = tls_settings
+        elif data.net == 'h2':
+            result['httpSettings'] = {
+                'path': data.path,
+                'host': [data.host],
+            }
         else:
             raise TypeError(f'unsupported type: {data.net}')
+
+        if data.tls == 'tls':
+            tls_settings = {'allowInsecure': True}
+            if data.host:
+                tls_settings['serverName'] = data.host
+
+            result['security'] = 'tls'
+            result['tlsSettings'] = tls_settings
 
         return result
 
