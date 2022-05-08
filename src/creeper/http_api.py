@@ -23,6 +23,7 @@ from creeper.components import statistic
 from creeper.components.measure import test_backend_speed
 from creeper.components.diagnosis import diagnosis_network
 from creeper.impl.win_utils import shell_execute
+from scripts import install
 
 MIME_HTML = 'text/html'
 MIME_CSS = 'text/css'
@@ -382,6 +383,7 @@ class ApiHandler:
 
         result = dict(user_conf)
         result['smart_mode'] = self.app.smart_mode
+        result['auto_start'] = install.did_enable_startup()
         result['app'] = app_conf
         await req.result_ok(result)
 
@@ -399,6 +401,9 @@ class ApiHandler:
 
         if req_key == 'allow_lan':
             self.set_allow_lan(req_value)
+        elif req_key == 'auto_start':
+            await asyncio.sleep(0.5)
+            install.enable_startup(req_value)
         elif req_key == 'smart_mode':
             self.app.smart_mode = bool(req_value)
         elif req_key == 'show_hidden_feeds':

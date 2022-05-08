@@ -27,6 +27,10 @@
         </div>
         <div class="separator"></div>
         <user-settings-option
+          key-name="auto_start"
+          label="Auto Start">
+        </user-settings-option>
+        <user-settings-option
           key-name="smart_mode"
           label="Smart Mode"
           :confirm="{beforeUncheck: 'Are you sure you want to disable SMART mode?'}">
@@ -225,7 +229,7 @@
       return false;
     }
 
-    new Vue({
+    app = new Vue({
       el: '#page-content',
       data: {
         version: null,
@@ -270,8 +274,8 @@
           return `${name} ${v.verison} (${v.build})`;
         },
         needsRestartApp() {
-          app = this.userSettings?.app;
-          anyAddr = app && app['listen_any_addr'];
+          const app = this.userSettings?.app;
+          const anyAddr = app && app['listen_any_addr'];
           return this.userSettings.allow_lan && !anyAddr;
         },
         hiddenFeedsNum() {

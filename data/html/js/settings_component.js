@@ -1,21 +1,44 @@
-Vue.component('check-opt', {
+Vue.component('checkbox', {
   template: `
-    <label>
+    <label :disabled="disabled">
       <input
         type="checkbox"
-        :checked="getValue()"
-        @input="e => setValue(e.target.checked)"
-        :disabled="!loaded || pending"
-        @change="onChanged($event)"
+        :checked="value"
+        :disabled="disabled"
+        @input="$emit('input', $event.target.checked)"
+        @change="$emit('change', $event)"
       />
-      {{label}}
       <slot></slot>
     </label>
   `,
   props: {
+    value: {
+      type: Boolean,
+      default: false,
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+  },
+});
+
+Vue.component('check-opt', {
+  template: `
+    <checkbox
+      :value="value"
+      :disabled="!loaded || pending"
+      @input="val => $emit('input', val)"
+      @change="onChanged"
+    >
+      {{label}}
+      <slot></slot>
+    </checkbox>
+  `,
+  props: {
     keyName: String,
     label: String,
-    value: Boolean, /* (v-model) */
+    value: Boolean,
     loaded: {
       type: Boolean,
       default: true,
@@ -28,12 +51,6 @@ Vue.component('check-opt', {
     }
   },
   methods: {
-    getValue() {
-      return this.value;
-    },
-    setValue(checked) {
-      this.$emit('input', checked);
-    },
     doConfirm(isChecked) {
       const confirmInfo = this.confirm;
       if (!confirmInfo) {
@@ -48,11 +65,10 @@ Vue.component('check-opt', {
 
       return true;
     },
-    async onChanged(event) {
-      this.pending = true;
-      const isChecked = this.getValue();
+    async onChangedImpl(event) {
+      const isChecked = this.value;
 
-      this.update(!isChecked);
+      this.value = !isChecked;
       this.syncUi(event);
 
       if (!this.doConfirm(isChecked)) {
@@ -63,17 +79,16 @@ Vue.component('check-opt', {
       result = await this.$root.apiPostJSON(
         '/api/user_settings', conf);
       if (result !== null) {
-        this.update(isChecked);
+        this.value = isChecked;
       }
+    },
+    async onChanged(event) {
+      this.pending = true;
+      await this.onChangedImpl(event);
+      this.pending = false;
     },
     syncUi(event) {
-      event.target.checked = this.getValue();
-    },
-    update(checked) {
-      if (checked !== undefined) {
-        this.setValue(!!checked);
-        this.pending = false;
-      }
+      event.target.checked = this.value;
     },
   },
 });
@@ -105,14 +120,17 @@ Vue.component('server-list', {
         </div>
         <div class="feed-op-buttons">
           <div style="margin-right: 15px;">
-            <label :disabled="!duplicateNumber">
-              <input type="checkbox" v-model="showDuplicate" :disabled="!duplicateNumber" />
-                Duplicates ({{duplicateNumber}})
-            </label>
-            <label><input type="checkbox" v-model="showExtraInfo" />Details</label>
+            <checkbox
+              v-model="showDuplicate"
+              :disabled="!duplicateNumber">
+              Duplicates ({{duplicateNumber}})
+            </checkbox>
+            <checkbox
+              v-model="showExtraInfo">
+              Details
+            </checkbox>
             <check-opt
               v-model="feedData.hidden"
-              :loaded="true"
               :key-name="'hide_feed:' + feedData.uid"
               label="Hidden"
             >

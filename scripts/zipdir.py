@@ -90,18 +90,46 @@ def get_included_items(conf):
     included_items = []
     transform = {}
 
+    def push_path(src, dst):
+        assert dst[-1] != '/'
+        assert os.path.isfile(src), src
+        included_items.append(dst)
+
     for rule in conf.include_file_path:
         if isinstance(rule, list):
             path, archive_name = rule
-            included_items.append(path)
-            transform[path] = archive_name
+            transform[archive_name] = path
+            push_path(*rule)
         else:
-            included_items.append(rule)
+            push_path(rule, rule)
 
     return included_items, transform
 
 
-def pack(conf):
+def get_parent_folders_gen(path):
+    assert path[0] != '/'
+    assert path[-1] != '/'
+    parts = path.split('/')
+
+    for i in range(len(parts) - 1):
+        yield '/'.join(parts[:i + 1])
+
+
+def ensure_parent_folders(items):
+    item_set = set(items)
+    result = []
+
+    for item in items:
+        for path in get_parent_folders_gen(item):
+            if path not in item_set:
+                item_set.add(path)
+                result.append((True, path))
+        result.append((False, item))
+
+    return result
+
+
+def make_zip_items(conf):
     ignore = IgnoreRule(conf)
     all_items = list(gen_work_dir('.', ignore))
 
@@ -115,13 +143,26 @@ def pack(conf):
     zip_items = set(zip_items) | set(include_items)
     zip_items = list(zip_items)
     zip_items.sort()
+    zip_items = ensure_parent_folders(zip_items)
+    return zip_items, transform
 
-    output_path = Path(ignore.conf.output)
+
+def pack(conf):
+    zip_items, transform = make_zip_items(conf)
+    output_path = Path(conf.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
     with ZipFile(output_path, 'w', ZIP_DEFLATED) as zf:
-        for path in zip_items:
-            archive_name = transform.get(path)
-            zf.write(path, archive_name)
+        for added_dir, path in zip_items:
+            if added_dir:
+                zf.writestr(path + '/', '')
+                continue
+
+            real_path = transform.get(path)
+            if real_path:
+                zf.write(real_path, path)
+            else:
+                zf.write(path)
 
 
 def exclude_special(conf):
@@ -182,15 +223,26 @@ def rename_conf_keys(conf):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--output')
+    parser.add_argument('--dir', help='working directory')
+    parser.add_argument('--output', help='output zip file')
     return parser.parse_args()
 
 
-def main():
-    conf = read_conf()
+def handle_cli_args():
     args = get_args()
+
+    if args.dir:
+        os.chdir(args.dir)
+
+    conf = read_conf()
     if args.output:
         conf['output'] = args.output
+
+    return conf
+
+
+def main():
+    conf = handle_cli_args()
 
     for key in [
         'exclude_self',

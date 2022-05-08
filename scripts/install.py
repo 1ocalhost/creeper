@@ -6,13 +6,14 @@ import shutil
 import tempfile
 import subprocess
 from pathlib import Path
+from functools import lru_cache
 
 APP_NAME = 'Creeper'
 APP_UID = 'creeper.pyapp.win32'
 INSTALLER_NAME = APP_NAME + ' Installer'
 APP_DIR = Path(__file__).absolute().parent
 WINAPI = None
-
+FOLDER = None
 
 def try_os_remove(path):
     return try_os_unlink(path)
@@ -127,6 +128,7 @@ class SpecialFolders:
     CSIDL_STARTUP = 0x0007
     CSIDL_COMMON_STARTUP = 0x0018
 
+    @lru_cache
     def _get_dir(self, dir_type):
         assert WINAPI
         path = WINAPI.MAX_PATH_WCHAR()
@@ -207,7 +209,6 @@ def uninstaller_lnk(folder):
 
 
 def install_app_impl():
-    FOLDER = SpecialFolders()
     menu_dir = FOLDER.start_menu_dir(True)
     startup_dir = FOLDER.startup_dir()
 
@@ -227,12 +228,11 @@ def install_app_impl():
         uninstaller_lnk(menu_dir),
         'installer.exe', 'copy-uninstall', APP_DIR)
 
-    shutil.copy(launcher, startup_dir)
+    enable_startup()
     return launcher
 
 
 def try_uninstall_app_old():
-    FOLDER = SpecialFolders()
     startup_dir = FOLDER.startup_dir()
     if not startup_dir:
         return
@@ -266,16 +266,33 @@ def install_app():
     os.startfile(launcher)
 
 
-def uninstall_app():
-    FOLDER = SpecialFolders()
-    menu_dir = FOLDER.start_menu_dir()
+def enable_startup(enable=True):
     startup_dir = FOLDER.startup_dir()
+    if not startup_dir:
+        return
 
+    if enable:
+        menu_dir = FOLDER.start_menu_dir()
+        launcher = launcher_lnk(menu_dir)
+        shutil.copy(launcher, startup_dir)
+    else:
+        try_os_unlink(launcher_lnk(startup_dir))
+
+
+def did_enable_startup():
+    startup_dir = FOLDER.startup_dir()
+    if not startup_dir:
+        return False
+
+    return launcher_lnk(startup_dir).exists()
+
+
+def uninstall_app():
+    menu_dir = FOLDER.start_menu_dir()
     if menu_dir:
         try_sh_rmtree(menu_dir)
 
-    if startup_dir:
-        try_os_unlink(launcher_lnk(startup_dir))
+    enable_startup(False)
 
 
 def main():
@@ -306,18 +323,27 @@ def open_url(url):
         creationflags=subprocess.CREATE_NO_WINDOW)
 
 
-if __name__ == "__main__":
-    try:
-        import ctypes
-        import ctypes.wintypes
-    except ImportError:
+is_main = (__name__ == '__main__')
+
+try:
+    import ctypes
+    import ctypes.wintypes
+except ImportError:
+    if is_main:
         message_box_cmd('You should install KB2533623 update.')
         open_url(gen_url_KB2533623())
         sys.exit(1)
+    else:
+        raise
 
-    try:
-        WINAPI = WinApi()
+try:
+    WINAPI = WinApi()
+    FOLDER = SpecialFolders()
+    if is_main:
         main()
-    except Exception:
+except Exception:
+    if is_main:
         tb = traceback.format_exc()
         message_box('Error:\n' + tb, 'error')
+    else:
+        raise

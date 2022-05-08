@@ -2,11 +2,7 @@
 set PATH=%~dp0\scripts;%PATH%
 
 check_deps.py || call :_exit
-
-cd src
-zipdir.py --output "../out/src.zip" || call :_exit
-
-cd ..
+zipdir.py --dir src || call :_exit
 zipdir.py || call :_exit
 
 if not exist out mkdir out

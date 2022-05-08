@@ -1,0 +1,6 @@
+{
+    "output": "../out/src.zip",
+    "include_file_path": [
+        ["../scripts/install.py", "scripts/install.py"]
+    ]
+}
