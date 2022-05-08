@@ -7,9 +7,11 @@ import asyncio
 import urllib.request
 from urllib.parse import parse_qsl, urlsplit
 
-from creeper.env import CONF_DIR, FILE_FEED_JSON
+from creeper.env import IS_DEBUG, CONF_DIR, \
+    FILE_FEED_JSON, ENV_NO_BACKEND
 from creeper.log import logger
-from creeper.utils import _MiB, readable_exc, write_json_file, open_url
+from creeper.utils import _MiB, readable_exc, \
+    write_json_file, open_url
 
 FEED_FILE_PATH = CONF_DIR / FILE_FEED_JSON
 
@@ -22,18 +24,18 @@ class EmptyResponse(Exception):
     pass
 
 
-def fetch_url_content_impl(url):
+def fetch_url_content_impl(url, proxy):
     hdr = {'User-Agent': 'Client App'}
     logger.debug(f'fetch feed: {url}')
     req = urllib.request.Request(url, headers=hdr)
-    response = open_url(req, None, timeout=10)
+    response = open_url(req, proxy, timeout=10)
     return response.read().decode()
 
 
-async def fetch_url_content(url):
+async def fetch_url_content(url, proxy):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(
-        None, fetch_url_content_impl, url)
+        None, fetch_url_content_impl, url, proxy)
 
 
 def b64_decode(data):
@@ -151,8 +153,8 @@ def make_feed_data(url, content=None):
     }
 
 
-async def fetch_feed(feed_url):
-    content = await fetch_url_content(feed_url)
+async def fetch_feed(feed_url, proxy):
+    content = await fetch_url_content(feed_url, proxy)
     if not content:
         raise EmptyResponse(feed_url)
 
@@ -228,16 +230,27 @@ def edit_feed(uid, url):
     write_feed(feed_list)
 
 
-async def update_feed(uid):
+async def update_feed(uid, proxy):
     feed_list = read_feed()
     feed_item = next(feed_by_uid(feed_list, uid))
 
-    feed = await fetch_feed(feed_item['url'])
+    feed = await fetch_feed(feed_item['url'], proxy)
     feed.pop('uid', None)
     feed_item.update(**feed)
 
     write_feed(feed_list)
     return feed_item
+
+
+async def update_feed_app(app, uid):
+    proxy = app.base_url \
+        if app.update_via_proxy \
+        else None
+
+    if IS_DEBUG and ENV_NO_BACKEND and proxy:
+        proxy = proxy.replace(':1081', ':1080')
+
+    return await update_feed(uid, proxy)
 
 
 async def update_feed_conf(uid, **kwargs):

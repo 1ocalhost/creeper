@@ -21,7 +21,7 @@ class PACServer:
         return 'application/x-ns-proxy-autoconfig', script
 
     def pac_file_url(self):
-        return self.app.base_url() + '/' + self.pac_filename
+        return self.app.base_url + '/' + self.pac_filename
 
     def update_sys_setting(self, enabled):
         if ENV_NO_BACKEND:

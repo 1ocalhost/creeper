@@ -1,6 +1,6 @@
 {
     "name": "creeper",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "dependencies": [
         {
             "path": "data/bin/ssrwin.exe",
@@ -16,12 +16,12 @@
         },
         {
             "path": "data/conf/vendor/cn_ip.txt",
-            "sha256": "195adb4dab43b3b368a79db08b423c2f201f07bc08d8bffa6e40f991661482a9",
+            "sha256": "909480c66d5b5e89ead3c1eef2dea0ea1919f4a81d85e8be0de2f62d68aaccd6",
             "download_url": "https://github.com/17mon/china_ip_list/raw/master/china_ip_list.txt"
         },
         {
             "path": "build_deps/creeper-installer.exe",
-            "sha256": "2221586f59067fa92a4ddb8cb39b6c476c51b0df9bb608394ef5cfe9589ef54c",
+            "sha256": "40583b75cfbc1113194fe1d42270177309c98fd74e5e2fdfa2699eb7717dc661",
             "download_url": "https://github.com/1ocalhost/creeper-installer/releases/latest/download/creeper-installer.exe"
         },
         {

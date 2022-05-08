@@ -1,7 +1,15 @@
 {
     "output": "out/app.zip",
-    "exclude_folder_path": [".vscode", "src", "scripts"],
-    "exclude_file_path": ["pack.bat", "manifest.json"],
+    "exclude_folder_path": [
+        ".vscode",
+        "src",
+        "scripts"
+    ],
+    "exclude_file_path": [
+        "pack.bat",
+        "manifest.json",
+        "README.md"
+    ],
     "include_file_path": [
         "data/conf/vendor/cn_ip.txt",
         "data/bin/ssrwin.exe",

@@ -17,7 +17,7 @@ from creeper.env import IS_DEBUG, APP_DIR, CONF_DIR, HTML_DIR, \
     USER_CONF, FILE_FEED_JSON, FILE_SPEED_JSON, FILE_CUR_NODE_JSON
 from creeper.utils import write_drain, fmt_exc, readable_exc, AttrDict
 from creeper.proxy.feed import add_feed, delete_feed, edit_feed, \
-    update_feed, update_feed_conf
+    update_feed_app, update_feed_conf
 from creeper.proxy.backend import backend_utilitys
 from creeper.components import statistic
 from creeper.components.measure import test_backend_speed
@@ -35,6 +35,16 @@ CONF_DATA_FILES = [
     FILE_FEED_JSON,
     FILE_SPEED_JSON,
     FILE_CUR_NODE_JSON,
+]
+
+MEMORY_OPTIONS = [
+    'smart_mode',
+    'update_via_proxy',
+]
+
+JSON_OPTIONS = [
+    'allow_lan',
+    'show_hidden_feeds',
 ]
 
 
@@ -354,7 +364,7 @@ class ApiHandler:
 
     async def api_update_feed(self, req):
         conf = await read_json_body(req)
-        new_feed = await update_feed(conf['uid'])
+        new_feed = await update_feed_app(self.app, conf['uid'])
         await req.result_ok(new_feed)
 
     async def api_test_speed(self, req):
@@ -375,15 +385,17 @@ class ApiHandler:
         await req.result_ok(conf_content)
 
     async def api_get_settings(self, req):
-        keys = ['allow_lan', 'show_hidden_feeds']
-        user_conf = [(key, USER_CONF[key]) for key in keys]
+        result = {}
+        for key in JSON_OPTIONS:
+            result[key] = USER_CONF[key]
+
+        for key in MEMORY_OPTIONS:
+            result[key] = getattr(self.app, key)
+
+        result['auto_start'] = install.did_enable_startup()
 
         app_conf = {}
         app_conf['listen_any_addr'] = self.app.listen_any_addr
-
-        result = dict(user_conf)
-        result['smart_mode'] = self.app.smart_mode
-        result['auto_start'] = install.did_enable_startup()
         result['app'] = app_conf
         await req.result_ok(result)
 
@@ -398,14 +410,17 @@ class ApiHandler:
         payload = await read_json_body(req)
         req_key = payload['key']
         req_value = payload['value']
+        mem_opt = req_key in MEMORY_OPTIONS
 
-        if req_key == 'allow_lan':
+        if not mem_opt:
+            await asyncio.sleep(0.5)
+
+        if mem_opt:
+            setattr(self.app, req_key, bool(req_value))
+        elif req_key == 'allow_lan':
             self.set_allow_lan(req_value)
         elif req_key == 'auto_start':
-            await asyncio.sleep(0.5)
             install.enable_startup(req_value)
-        elif req_key == 'smart_mode':
-            self.app.smart_mode = bool(req_value)
         elif req_key == 'show_hidden_feeds':
             USER_CONF.show_hidden_feeds = bool(req_value)
         elif req_key.startswith('hide_feed:'):

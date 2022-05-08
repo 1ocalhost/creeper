@@ -5,8 +5,7 @@ Vue.component('checkbox', {
         type="checkbox"
         :checked="value"
         :disabled="disabled"
-        @input="$emit('input', $event.target.checked)"
-        @change="$emit('change', $event)"
+        @change="onChange($event)"
       />
       <slot></slot>
     </label>
@@ -21,6 +20,11 @@ Vue.component('checkbox', {
       default: false,
     },
   },
+  methods: {
+    onChange(event) {
+      this.$emit('input', event.target.checked, event);
+    }
+  },
 });
 
 Vue.component('check-opt', {
@@ -28,8 +32,7 @@ Vue.component('check-opt', {
     <checkbox
       :value="value"
       :disabled="!loaded || pending"
-      @input="val => $emit('input', val)"
-      @change="onChanged"
+      @input="onChanged"
     >
       {{label}}
       <slot></slot>
@@ -65,30 +68,23 @@ Vue.component('check-opt', {
 
       return true;
     },
-    async onChangedImpl(event) {
-      const isChecked = this.value;
-
-      this.value = !isChecked;
-      this.syncUi(event);
-
-      if (!this.doConfirm(isChecked)) {
+    async onChangedImpl(checked, event) {
+      event.target.checked = !checked;
+      if (!this.doConfirm(checked)) {
         return;
       }
 
-      conf = {key: this.keyName, value: isChecked};
+      conf = {key: this.keyName, value: checked};
       result = await this.$root.apiPostJSON(
         '/api/user_settings', conf);
       if (result !== null) {
-        this.value = isChecked;
+        this.$emit('input', checked, event);
       }
     },
-    async onChanged(event) {
+    async onChanged(checked, event) {
       this.pending = true;
-      await this.onChangedImpl(event);
+      await this.onChangedImpl(checked, event);
       this.pending = false;
-    },
-    syncUi(event) {
-      event.target.checked = this.value;
     },
   },
 });

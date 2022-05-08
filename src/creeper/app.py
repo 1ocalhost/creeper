@@ -42,6 +42,7 @@ class App:
             host_name, host_ip = 'local', ADDR_LOCAL
 
         self.smart_mode = True
+        self.update_via_proxy = False
         self.http_server = None
         self.icons = AppIcons()
         self.tray_icon = None
@@ -65,6 +66,7 @@ class App:
     def did_enable_proxy(self, value):
         USER_CONF.enable_proxy = value
 
+    @property
     def base_url(self):
         return f'http://{ADDR_LOCAL}:{self.app_port}'
 
@@ -182,7 +184,7 @@ class App:
             self.update_state_icon(icon)
 
         def on_settings(icon):
-            open_url(self.base_url() + '/settings.html')
+            open_url(self.base_url + '/settings.html')
 
         menu_items = [
             (self.icons.play, 'Turn On', on_turn_on,

@@ -21,48 +21,67 @@
 
   <body>
     <div id="page-content">
-      <div class="ctrl-panel card">
-        <div class="version">
-          <a>{{versionText}}</a>
-        </div>
-        <div class="separator"></div>
-        <user-settings-option
-          key-name="auto_start"
-          label="Auto Start">
-        </user-settings-option>
-        <user-settings-option
-          key-name="smart_mode"
-          label="Smart Mode"
-          :confirm="{beforeUncheck: 'Are you sure you want to disable SMART mode?'}">
-        </user-settings-option>
-        <user-settings-option
-          key-name="allow_lan"
-          label="Allow from LAN">
-          <span v-if="needsRestartApp">
-            (<a style="color: #e80c0c;">Needs Restart</a>)
-          </span>
-        </user-settings-option>
-        <user-settings-option
-          key-name="show_hidden_feeds"
-          :label="'Hidden Feeds (' + hiddenFeedsNum + ')'">
-        </user-settings-option>
-        <div class="separator"></div>
-        <button @click="openAppFolder">App Folder</button>
-        <button @click="openMonitor">Monitor</button>
-        <button @click="addFeed">Add Feed</button>
-      </div>
       <div
         class="server-lists"
         :hiding-enabled="!userSettings.show_hidden_feeds">
-        <server-list
-          v-for="item in feedList"
-          :feed-data="item"
-          @switch-node="switchNode"
-          @test-node="testNode"
-          @edit-feed="editFeed"
-          @delete-feed="deleteFeed"
-          @update-feed="updateFeed"
-        />
+        <template>
+          <server-list
+            v-for="item in feedList"
+            :feed-data="item"
+            @switch-node="switchNode"
+            @test-node="testNode"
+            @edit-feed="editFeed"
+            @delete-feed="deleteFeed"
+            @update-feed="updateFeed"
+          />
+        </template>
+        <div class="server-list">
+          <div class="ctrl-panel card">
+            <div class="text-title text-center">
+              <a>&#9881;&#65039; Settings</a>
+            </div>
+            <div class="separator"></div>
+            <div class="horizontal">
+              <div class="vertical">
+                <user-settings-option
+                  key-name="auto_start"
+                  label="Auto Start">
+                </user-settings-option>
+                <user-settings-option
+                  key-name="smart_mode"
+                  label="Smart Mode"
+                  :confirm="{beforeUncheck: 'Are you sure you want to disable SMART mode?'}">
+                </user-settings-option>
+                <user-settings-option
+                  key-name="allow_lan"
+                  label="Allow from LAN">
+                  <span v-if="needsRestartApp">
+                    (<a style="color: #e80c0c;">Needs Restart</a>)
+                  </span>
+                </user-settings-option>
+                <user-settings-option
+                  key-name="update_via_proxy"
+                  label="Update via Proxy">
+                </user-settings-option>
+                <user-settings-option
+                  key-name="show_hidden_feeds"
+                  :label="'Hidden Feeds (' + hiddenFeedsNum + ')'">
+                </user-settings-option>
+              </div>
+              <div style="width: 80px;"></div>
+              <div class="vertical">
+                <button @click="openAppFolder">App Folder</button>
+                <button @click="openMonitor">Monitor</button>
+                <button @click="addFeed">Add Feed</button>
+              </div>
+              <div style="width: 20px;"></div>
+            </div>
+            <div class="separator"></div>
+            <div class="text-center" style="font-size: 75%;">
+              <a>{{versionText}}</a>
+            </div>
+          </div>
+        </div>
       </div>
       <div comment="i donot know why but keep this wrapper div">
         <vue-simple-context-menu
