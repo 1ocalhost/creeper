@@ -231,11 +231,17 @@ def edit_feed(uid, url):
 
 
 async def update_feed(uid, proxy):
-    feed_list = read_feed()
-    feed_item = next(feed_by_uid(feed_list, uid))
+    def load_item():
+        feed_list = read_feed()
+        feed_item = next(feed_by_uid(feed_list, uid))
+        return feed_list, feed_item
 
+    _, feed_item = load_item()
     feed = await fetch_feed(feed_item['url'], proxy)
     feed.pop('uid', None)
+
+    # reload and merge
+    feed_list, feed_item = load_item()
     feed_item.update(**feed)
 
     write_feed(feed_list)
