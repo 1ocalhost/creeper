@@ -5,7 +5,7 @@ import json
 import base64
 import asyncio
 import urllib.request
-from urllib.parse import parse_qsl, urlsplit
+from urllib.parse import parse_qsl, urlsplit, unquote
 
 from creeper.env import IS_DEBUG, CONF_DIR, \
     FILE_FEED_JSON, ENV_NO_BACKEND
@@ -48,6 +48,22 @@ def b64_decode(data):
 
 def split_no_empty(obj, sep):
     return list(filter(len, obj.split(sep)))
+
+
+def parse_ss_list(uri):
+    splited = urlsplit(uri)
+    extra, host = splited.netloc.split('@')
+    method, password = b64_decode(extra).split(':')
+    server, port = host.split(':')
+    remark = unquote(splited.fragment)
+
+    return {
+        'server': server,
+        'server_port': port,
+        'method': method,
+        'password': password,
+        'remark': remark,
+    }
 
 
 def parse_ssr_list(uri):
@@ -117,13 +133,17 @@ def mark_duplicate(proxy_items, unique_keys):
 
 def parse_feed_data(feed):
     all_lines = split_no_empty(b64_decode(feed), '\n')
+    all_lines = list(map(str.strip, all_lines))
 
     if not len(all_lines):
         return {}
 
     scheme = split_no_empty(all_lines[0], '://')[0]
 
-    if scheme == 'ssr':
+    if scheme == 'ss':
+        proxy_items = list(map(parse_ss_list, all_lines))
+        unique_keys = ['server', 'server_port']
+    elif scheme == 'ssr':
         proxy_items = list(map(parse_ssr_list, all_lines))
         proxy_items = list(map(parse_ssr_item, proxy_items))
         unique_keys = ['server', 'server_port']

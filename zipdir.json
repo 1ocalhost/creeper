@@ -12,6 +12,7 @@
     ],
     "include_file_path": [
         "data/conf/vendor/cn_ip.txt",
+        "data/bin/sswin.exe",
         "data/bin/ssrwin.exe",
         "data/bin/v2ray.exe",
         ["out/src.zip", "src.pyc"],

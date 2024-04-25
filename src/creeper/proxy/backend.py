@@ -89,9 +89,9 @@ class BackendUtility:
         return self.backend_uid_exe_path, conf_file_
 
 
-class BackendUtilitySSR(BackendUtility):
-    def __init__(self):
-        super().__init__('ssrwin.exe', 'ssr.json')
+class BackendUtilitySSLike(BackendUtility):
+    def __init__(self, *args):
+        super().__init__(*args)
 
     def make_conf_data(self, data):
         return {
@@ -107,6 +107,16 @@ class BackendUtilitySSR(BackendUtility):
             '-b', BACKEND_LOCAL_ADDR,
             '-l', '0',
         ]
+
+
+class BackendUtilitySS(BackendUtilitySSLike):
+    def __init__(self):
+        super().__init__('sswin.exe', 'ss.json')
+
+
+class BackendUtilitySSR(BackendUtilitySSLike):
+    def __init__(self):
+        super().__init__('ssrwin.exe', 'ssr.json')
 
 
 class BackendUtilityV2Ray(BackendUtility):
@@ -183,6 +193,7 @@ class BackendUtilityV2Ray(BackendUtility):
 class BackendUtilitys:
     def __init__(self):
         self.utilitys = {
+            'ss': BackendUtilitySS(),
             'ssr': BackendUtilitySSR(),
             'vmess': BackendUtilityV2Ray(),
         }

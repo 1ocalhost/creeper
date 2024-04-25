@@ -191,6 +191,12 @@ a.text-tag[scheme="vmess"] {
   color: #2c8671;
 }
 
+a.text-tag[scheme="ss"] {
+  background: #d4bde9;
+  color: #4d1581;
+  padding: 0 0.5em;
+}
+
 a.text-tag[scheme="ssr"] {
   background: #8fd2f4;
   color: #10688b;

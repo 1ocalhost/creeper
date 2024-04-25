@@ -1,10 +1,16 @@
 {
     "name": "creeper",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "dependencies": [
         {
+            "path": "data/bin/sswin.exe",
+            "sha256": "59da72c97e81d8b2e2ce03097c7cb3e607ff7cbf8013b19dad7070629b9834da",
+            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/sswin.exe.zip",
+            "uncompress": "zip!sswin.exe"
+        },
+        {
             "path": "data/bin/ssrwin.exe",
-            "sha256": "aaa16af131c884428b5f625c12aede47c331939634bd5bfe5a0b69aecda43364",
+            "sha256": "8d33566488c184bca37d20e7eb7eebee6ca26aa156d183fcd151c6819f8bb756",
             "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/ssrwin.exe.zip",
             "uncompress": "zip!ssrwin.exe"
         },
@@ -16,7 +22,7 @@
         },
         {
             "path": "data/conf/vendor/cn_ip.txt",
-            "sha256": "909480c66d5b5e89ead3c1eef2dea0ea1919f4a81d85e8be0de2f62d68aaccd6",
+            "sha256": "70787a1692d2f52e3547c1d6a6a31208c568e9627dc42e77afa6dece51873a72",
             "download_url": "https://github.com/17mon/china_ip_list/raw/master/china_ip_list.txt"
         },
         {
