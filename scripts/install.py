@@ -15,6 +15,7 @@ APP_DIR = Path(__file__).absolute().parent
 WINAPI = None
 FOLDER = None
 
+
 def try_os_remove(path):
     return try_os_unlink(path)
 
@@ -293,6 +294,10 @@ def uninstall_app():
         try_sh_rmtree(menu_dir)
 
     enable_startup(False)
+
+    sys.path.append(str(APP_DIR / 'src.pyc'))
+    from creeper.impl.win_pac_setting import set_pac_setting
+    set_pac_setting('', False)
 
 
 def main():
