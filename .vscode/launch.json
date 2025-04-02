@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "App",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/src/__main__.py",
             "justMyCode": false,
@@ -17,7 +17,7 @@
         },
         {
             "name": "Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "justMyCode": false,

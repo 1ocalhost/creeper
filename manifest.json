@@ -22,7 +22,7 @@
         },
         {
             "path": "data/conf/vendor/cn_ip.txt",
-            "sha256": "70787a1692d2f52e3547c1d6a6a31208c568e9627dc42e77afa6dece51873a72",
+            "sha256": "1e855b2493221becffe6261c97efce005f2cea65bf506e3c6ca1687d7e7551ad",
             "download_url": "https://github.com/17mon/china_ip_list/raw/master/china_ip_list.txt"
         },
         {

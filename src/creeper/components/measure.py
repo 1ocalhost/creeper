@@ -161,18 +161,18 @@ def update_speed_cache(server_uid, result):
     speed_file_path = CONF_DIR / FILE_SPEED_JSON
     try:
         with open(speed_file_path) as f:
-            speed_data_origin = json.loads(f.read())
-
-        def get_key(item):
-            return item[1]['update']
-        speed_data = sorted(speed_data_origin.items(), key=get_key)
-        speed_data = dict(speed_data[:500])
+            speed_data = json.loads(f.read())
     except FileNotFoundError:
         speed_data = {}
 
-    speed_data[server_uid] = new_item
-    new_content = json.dumps(speed_data, indent=4)
+    def get_key(item):
+        return item[1]['update']
 
+    speed_data[server_uid] = new_item
+    speed_data = sorted(speed_data.items(), key=get_key)
+    speed_data = dict(speed_data[:500])
+
+    new_content = json.dumps(speed_data, indent=4)
     with open(speed_file_path, 'w') as f:
         f.write(new_content)
 

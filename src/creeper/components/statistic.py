@@ -1,6 +1,6 @@
 from queue import Queue
 from time import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from bisect import bisect_right
 
 from creeper.log import logger
@@ -14,8 +14,8 @@ class Transfer:
 
 @dataclass
 class AllTransfers:
-    direct: Transfer = Transfer()
-    proxy: Transfer = Transfer()
+    direct: Transfer = field(default_factory=Transfer)
+    proxy: Transfer = field(default_factory=Transfer)
 
 
 transfer = AllTransfers()
