@@ -8,7 +8,7 @@ import tempfile
 from datetime import timedelta
 from pathlib import Path
 
-from creeper.env import MAIN_DIR
+from creeper.env import MAIN_DIR, IS_DEBUG, ENV_NO_BACKEND
 
 _KiB = 1024 * 1
 _MiB = 1024 * _KiB
@@ -131,3 +131,8 @@ def is_ipv4(host):
     except socket.error:
         return False
     return True
+
+
+def fix_proxy_url(proxy):
+    if IS_DEBUG and ENV_NO_BACKEND and proxy:
+        return proxy.replace(':1081', ':1080')

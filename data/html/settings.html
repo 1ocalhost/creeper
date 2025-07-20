@@ -78,6 +78,9 @@
                 <button @click="openAppFolder">App Folder</button>
                 <button @click="openMonitor">Monitor</button>
                 <button @click="addFeed">Add Feed</button>
+                <button @click="updateRules" :disabled="isUpdatingRules">
+                  {{isUpdatingRules ? 'Updating' : 'Update'}} Rules
+                </button>
               </div>
               <div style="width: 20px;"></div>
             </div>
@@ -287,6 +290,7 @@
         dialogTitle: '',
         dialogContent: '',
         alertMsg: '',
+        isUpdatingRules: false,
       },
       mounted() {
         new ClipboardJS('.clipboard-button');
@@ -476,10 +480,10 @@
             };
           }
 
-          result = speedItem['result'];
-          speedText = result['average_dl_speed'];
-          speedTextFull = `${speedText} (+${result['connection_time']})`
-          updateTime = speedItem['update'];
+          const result = speedItem['result'];
+          const speedText = result['average_dl_speed'];
+          const speedTextFull = `${speedText} (+${result['connection_time']})`
+          const updateTime = speedItem['update'];
 
           return {
             update: timeDiffFromNow(updateTime),
@@ -504,6 +508,14 @@
         openAppFolder() {
           this.apiPostJSON('/api/simple_cmd', {cmd: 'open_app_folder'});
         },
+        async updateRules() {
+          this.isUpdatingRules = true;
+          const result = await this.apiPostJSON('/api/update_rules', {});
+          if (result !== null) {
+            alert(`[OK] ${result.msg}`);
+          }
+          this.isUpdatingRules = false;
+        },
         openMonitor() {
           window.open('/monitor.html', 'monitor',
             'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=no,' +
@@ -515,7 +527,7 @@
             return;
           }
 
-          result = await this.apiPostJSON('/api/add_feed', {url});
+          const result = await this.apiPostJSON('/api/add_feed', {url});
           if (result === null) {
             return;
           }

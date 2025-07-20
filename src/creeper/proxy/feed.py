@@ -6,10 +6,10 @@ import httpx
 import base64
 from urllib.parse import parse_qsl, urlsplit, unquote
 
-from creeper.env import IS_DEBUG, CONF_DIR, \
-    FILE_FEED_JSON, ENV_NO_BACKEND
+from creeper.env import CONF_DIR, FILE_FEED_JSON
 from creeper.log import logger
-from creeper.utils import _MiB, readable_exc, write_json_file
+from creeper.utils import _MiB, \
+    readable_exc, write_json_file, fix_proxy_url
 
 FEED_FILE_PATH = CONF_DIR / FILE_FEED_JSON
 
@@ -26,7 +26,10 @@ async def fetch_url_content(url, proxy):
     logger.debug(f'fetch feed: {url}')
     headers = {'User-Agent': 'Creeper'}
 
-    async with httpx.AsyncClient(proxy=proxy, timeout=10) as client:
+    async with httpx.AsyncClient(
+            proxy=proxy,
+            timeout=10,
+            follow_redirects=True) as client:
         r = await client.get(url, headers=headers)
         return r.text
 
@@ -266,9 +269,7 @@ async def update_feed_app(app, uid):
         if app.update_via_proxy \
         else None
 
-    if IS_DEBUG and ENV_NO_BACKEND and proxy:
-        proxy = proxy.replace(':1081', ':1080')
-
+    proxy = fix_proxy_url(proxy)
     return await update_feed(uid, proxy)
 
 

@@ -7,6 +7,7 @@ import base64
 import binascii
 import struct
 import dataclasses
+import httpx
 
 from types import SimpleNamespace
 from ipaddress import ip_address
@@ -14,8 +15,10 @@ from urllib.parse import urlsplit, parse_qs
 
 from creeper.log import logger
 from creeper.env import IS_DEBUG, APP_DIR, CONF_DIR, HTML_DIR, \
-    USER_CONF, FILE_FEED_JSON, FILE_SPEED_JSON, FILE_CUR_NODE_JSON
-from creeper.utils import write_drain, fmt_exc, readable_exc, AttrDict
+    USER_CONF, FILE_FEED_JSON, FILE_SPEED_JSON, FILE_CUR_NODE_JSON, \
+    APP_CONF, PATH_RULES
+from creeper.utils import AttrDict, \
+    write_drain, fmt_exc, readable_exc, fix_proxy_url
 from creeper.proxy.feed import add_feed, delete_feed, edit_feed, \
     update_feed_app, update_feed_conf
 from creeper.proxy.backend import backend_utilitys
@@ -320,6 +323,7 @@ class ApiHandler:
         self.route('GET ', '/api/user_settings', self.api_get_settings)
         self.route('POST', '/api/user_settings', self.api_set_settings)
         self.route('POST', '/api/simple_cmd', self.api_simple_cmd)
+        self.route('POST', '/api/update_rules', self.api_update_rules)
 
     def route(self, method, path, func):
         method_ = method.strip().upper()
@@ -452,6 +456,29 @@ class ApiHandler:
         else:
             raise ValueError(f'bad cmd: {cmd}')
         await req.result_ok(conf)
+
+    async def api_update_rules(self, req):
+        msg_list = []
+        proxy = fix_proxy_url(self.app.base_url)
+
+        async def download(url, name):
+            async with httpx.AsyncClient(
+                    proxy=proxy,
+                    timeout=30,
+                    follow_redirects=True) as client:
+                logger.debug(f'downloading {name} from {url}...')
+                resp = await client.get(url)
+                assert resp.status_code == 200, f'HTTP {resp.status_code}'
+                path = PATH_RULES / f'{name}.txt'
+                data_size = len(resp.content) / 1024
+                msg_list.append(f'{name}({data_size:.1f}KB)')
+                path.write_bytes(resp.content)
+
+        for name, url in APP_CONF['rules'].items():
+            await download(url, name)
+
+        msg = ', '.join(msg_list) + ' (application restart required!)'
+        await req.result_ok({'msg': msg})
 
     def is_pac_path(self, path):
         url = urlsplit(path)
