@@ -22,6 +22,16 @@ class EmptyResponse(Exception):
     pass
 
 
+def parse_query(query):
+    params = {}
+
+    for key, value in parse_qsl(query):
+        if key not in params:
+            params[key] = value
+
+    return params
+
+
 async def fetch_url_content(url, proxy):
     logger.debug(f'fetch feed: {url}')
     headers = {'User-Agent': 'Creeper'}
@@ -58,6 +68,22 @@ def parse_ss_list(uri):
         'server_port': port,
         'method': method,
         'password': password,
+        'remark': remark,
+    }
+
+
+def parse_trojan_list(uri):
+    splited = urlsplit(uri)
+    password, host = splited.netloc.split('@')
+    server, port = host.split(':')
+    remark = unquote(splited.fragment)
+    params = parse_query(splited.query)
+
+    return {
+        'server': server,
+        'server_port': int(port),
+        'password': password,
+        'sni': params['sni'],
         'remark': remark,
     }
 
@@ -146,6 +172,9 @@ def parse_feed_data(feed):
     elif scheme == 'vmess':
         proxy_items = list(map(parse_vmess_list, all_lines))
         unique_keys = ['add', 'port', 'net', 'host', 'path']
+    elif scheme == 'trojan':
+        proxy_items = list(map(parse_trojan_list, all_lines))
+        unique_keys = ['server', 'server_port']
     else:
         raise ValueError(f'unsupported scheme: {scheme}')
 

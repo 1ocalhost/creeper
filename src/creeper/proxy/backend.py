@@ -190,12 +190,50 @@ class BackendUtilityV2Ray(BackendUtility):
         return [bin_file, '-c', conf_file_]
 
 
+class BackendUtilityTrojan(BackendUtility):
+    def __init__(self):
+        super().__init__('trojan.exe', 'trojan.json')
+
+    def make_conf_data(self, data):
+        conf = AttrDict(data.conf)
+        return {
+            'run_type': 'client',
+            'local_addr': BACKEND_LOCAL_ADDR,
+            'local_port': 0,
+            'remote_addr': conf.server,
+            'remote_port': conf.server_port,
+            'password': [
+                conf.password
+            ],
+            'log_level': 2,
+            'ssl': {
+                'verify': False,
+                'verify_hostname': False,
+                'sni': conf.sni,
+                'alpn': [
+                    'h2',
+                    'http/1.1'
+                ],
+                'reuse_session': True,
+                'session_ticket': False
+            }
+        }
+
+    def make_args(self, conf_file=None):
+        bin_file, conf_file_ = self.common_args(conf_file)
+        return [
+            bin_file,
+            '-c', conf_file_,
+        ]
+
+
 class BackendUtilitys:
     def __init__(self):
         self.utilitys = {
             'ss': BackendUtilitySS(),
             'ssr': BackendUtilitySSR(),
             'vmess': BackendUtilityV2Ray(),
+            'trojan': BackendUtilityTrojan(),
         }
 
     def check(self):

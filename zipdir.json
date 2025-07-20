@@ -11,14 +11,12 @@
         "README.md"
     ],
     "include_file_path": [
-        "data/bin/sswin.exe",
-        "data/bin/ssrwin.exe",
-        "data/bin/v2ray.exe",
         "data/conf/vendor/cacert.pem",
         ["out/src.zip", "src.pyc"],
         ["scripts/install.py", "install.py"]
     ],
     "include_glob": [
+        "data/bin/*.exe",
         "data/conf/vendor/rules/*.txt"
     ]
 }

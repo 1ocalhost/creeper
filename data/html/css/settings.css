@@ -203,6 +203,12 @@ a.text-tag[scheme="ssr"] {
   padding: 0 0.5em;
 }
 
+a.text-tag[scheme="trojan"] {
+  background: #ebb2d2;
+  color: #bd1370;
+  padding: 0 0.5em;
+}
+
 .dialog-wrapper {
   align-items: center;
   display: flex;
