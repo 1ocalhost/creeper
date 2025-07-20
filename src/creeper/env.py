@@ -82,9 +82,10 @@ _CONF_ROOT_DIR = _DATA_DIR / 'conf'
 CONF_DIR = _CONF_ROOT_DIR / 'user'
 CONF_VENDOR_DIR = _CONF_ROOT_DIR / 'vendor'
 
-PATH_CNIP_DB = CONF_VENDOR_DIR / 'cn_ip.txt'
+PATH_RULES = CONF_VENDOR_DIR / 'rules'
 PATH_PAC_TPL = CONF_VENDOR_DIR / 'pac.js'
 PATH_APP_CONF = CONF_VENDOR_DIR / 'app_conf.json'
+PATH_CACERT = CONF_VENDOR_DIR / 'cacert.pem'
 
 FILE_FEED_JSON = 'feed.json'
 FILE_SPEED_JSON = 'speed.json'

@@ -103,10 +103,10 @@ async def relay_stream(statistic,
         except BaseException:
             pass
 
-    await asyncio.wait([
+    await asyncio.gather(
         relay(reader, peer_reader, peer_writer, True),
         relay(peer_reader, reader, writer, False)
-    ])
+    )
 
 
 async def open_connection_exc(opt, host, port):
@@ -204,7 +204,7 @@ async def server_loop(host, port, opt):
         if (on_exc):
             on_exc(ex)
 
-        logger.warn(f'server_loop: {readable_exc(ex)}')
+        logger.warning(f'server_loop: {readable_exc(ex)}')
 
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(exception_handler)

@@ -1,5 +1,10 @@
-import socket
+import asyncio
+import base64
 import ipaddress
+import socket
+import ssl
+
+import httpx
 
 
 def parse_dns_string(reader, data):
@@ -85,7 +90,7 @@ def parse_dns_response(res, dq_len, req):
         return s[12:12+dq_len]
 
     data = reader.read(len(req))
-    assert(get_query(data) == get_query(req))
+    assert get_query(data) == get_query(req)
 
     def to_int(bytes_):
         return int.from_bytes(bytes_, 'big')
@@ -110,25 +115,52 @@ def parse_dns_response(res, dq_len, req):
     return result
 
 
-def dns_lookup(domain, address, timeout_sec=0.2):
-    dns_query = make_dns_query_domain(domain)
-    dq_len = len(dns_query)
+class DnsResolver:
+    def __init__(self, domain):
+        dns_query = make_dns_query_domain(domain)
+        self.dq_len = len(dns_query)
+        self.request = make_dns_request_data(dns_query)
 
-    req = make_dns_request_data(dns_query)
+    def parse(self, data):
+        return parse_dns_response(data, self.dq_len, self.request)
+
+
+def dns_lookup(domain, address, timeout_sec=0.2):
+    resolver = DnsResolver(domain)
+    req = resolver.request
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(timeout_sec)
 
     try:
         sock.sendto(req, (address, 53))
         res, _ = sock.recvfrom(1024 * 4)
-        result = parse_dns_response(res, dq_len, req)
+        return resolver.parse(res)
     except Exception:
-        return
+        pass
     finally:
         sock.close()
 
-    return result
+
+async def doh_lookup(domain, server, proxy=None, timeout_sec=10.0):
+    resolver = DnsResolver(domain)
+    dns = base64.urlsafe_b64encode(resolver.request) \
+        .decode().rstrip('=')
+    url = f'https://{server}/dns-query?dns={dns}'
+    ctx = ssl.create_default_context()
+
+    async with httpx.AsyncClient(verify=ctx, proxy=proxy) as session:
+        try:
+            reply = await session.get(url, timeout=timeout_sec)
+            return resolver.parse(reply.content)
+        except Exception:
+            pass
 
 
 if __name__ == '__main__':
-    print(dns_lookup('www.stackoverflow.com', "8.8.8.8"))
+    print(dns_lookup('www.google.com', '8.8.8.8'))
+
+    async def test_doh():
+        print(await doh_lookup(
+            'www.google.com', '8.8.8.8', 'http://127.0.0.1:1080'))
+
+    asyncio.run(test_doh())

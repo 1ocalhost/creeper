@@ -1,4 +1,5 @@
 import os
+import glob
 import json
 import argparse
 from pathlib import Path
@@ -103,6 +104,14 @@ def get_included_items(conf):
         else:
             push_path(rule, rule)
 
+    def to_unix_path(path):
+        return path.replace('\\', '/')
+
+    for rule in conf.include_glob:
+        file_list = glob.glob(rule)
+        for path in map(to_unix_path, file_list):
+            push_path(path, path)
+
     return included_items, transform
 
 
@@ -203,6 +212,9 @@ def read_conf():
         "include_file_path": [
             "path/file",
             ["path", "transformed_path"]
+        ],
+        "include_glob": [
+            "data/*.txt"
         ]
     }
     '''
@@ -253,7 +265,7 @@ def main():
             conf[key] = True
 
     for key in EXCLUDE_FILE_KEYS + \
-            ['include_file_path']:
+            ['include_file_path', 'include_glob']:
         if key not in conf:
             conf[key] = []
 

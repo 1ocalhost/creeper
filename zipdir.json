@@ -11,11 +11,14 @@
         "README.md"
     ],
     "include_file_path": [
-        "data/conf/vendor/cn_ip.txt",
         "data/bin/sswin.exe",
         "data/bin/ssrwin.exe",
         "data/bin/v2ray.exe",
+        "data/conf/vendor/cacert.pem",
         ["out/src.zip", "src.pyc"],
         ["scripts/install.py", "install.py"]
+    ],
+    "include_glob": [
+        "data/conf/vendor/rules/*.txt"
     ]
 }

@@ -2,16 +2,14 @@ import re
 import uuid
 import time
 import json
+import httpx
 import base64
-import asyncio
-import urllib.request
 from urllib.parse import parse_qsl, urlsplit, unquote
 
 from creeper.env import IS_DEBUG, CONF_DIR, \
     FILE_FEED_JSON, ENV_NO_BACKEND
 from creeper.log import logger
-from creeper.utils import _MiB, readable_exc, \
-    write_json_file, open_url
+from creeper.utils import _MiB, readable_exc, write_json_file
 
 FEED_FILE_PATH = CONF_DIR / FILE_FEED_JSON
 
@@ -24,18 +22,13 @@ class EmptyResponse(Exception):
     pass
 
 
-def fetch_url_content_impl(url, proxy):
-    hdr = {'User-Agent': 'Client App'}
-    logger.debug(f'fetch feed: {url}')
-    req = urllib.request.Request(url, headers=hdr)
-    response = open_url(req, proxy, timeout=10)
-    return response.read().decode()
-
-
 async def fetch_url_content(url, proxy):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None, fetch_url_content_impl, url, proxy)
+    logger.debug(f'fetch feed: {url}')
+    headers = {'User-Agent': 'Creeper'}
+
+    async with httpx.AsyncClient(proxy=proxy, timeout=10) as client:
+        r = await client.get(url, headers=headers)
+        return r.text
 
 
 def b64_decode(data):

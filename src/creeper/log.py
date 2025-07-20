@@ -23,10 +23,11 @@ def _make_file_handler():
 
 
 def _init():
-    logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT)
+    logging.basicConfig(level=logging.CRITICAL, format=LOG_FORMAT)
 
     global logger
     logger = logging.getLogger(MODULE_NAME)
+    logger.setLevel(LOG_LEVEL)
 
     if not IS_DEBUG:
         logger.addHandler(_make_file_handler())

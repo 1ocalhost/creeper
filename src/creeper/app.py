@@ -5,7 +5,7 @@ import aiosocks
 
 from creeper.utils import check_singleton
 from creeper.impl import http_proxy
-from creeper.env import ICON_DIR, PATH_CNIP_DB, \
+from creeper.env import ICON_DIR, \
     APP_NAME, APP_CONF, USER_CONF, ENV_NO_BACKEND
 from creeper.log import logger
 from creeper.proxy.router import Router
@@ -19,6 +19,12 @@ from creeper.impl.win_utils import MsgBox, open_url, exit_app, restart_app
 
 ADDR_ANY = '0.0.0.0'
 ADDR_LOCAL = '127.0.0.1'
+
+ROUTE_DNS_ERROR = 0
+ROUTE_ALL_DIRECT = 1
+ROUTE_ALL_PROXY = 2
+ROUTE_SELECT_DIRECT = 3
+ROUTE_SELECT_PROXY = 4
 
 
 class AppIcons:
@@ -49,7 +55,7 @@ class App:
         self.app_host = host_ip
         self.app_host_name = host_name
         self.app_port = APP_CONF['main_port']
-        self.router = Router(PATH_CNIP_DB)
+        self.router = Router()
         self.pac_server = PACServer(self)
         self.backend = None
         self.need_restart = False
@@ -70,40 +76,78 @@ class App:
     def base_url(self):
         return f'http://{ADDR_LOCAL}:{self.app_port}'
 
-    async def is_connect_direct(self, host):
+    def is_all_direct(self):
         if not self.did_enable_proxy:
-            return True, host
+            return True
 
         if not self.backend or not self.backend.port:
-            return True, host
+            return True
 
-        return await self.router.is_direct(host)
+        return False
 
-    async def on_open_conn(self, host, port):
-        is_direct, remote = await self.is_connect_direct(host)
-        if is_direct is None:
-            statistic.on_route('UNREACHABLE', host)
-            return
+    @staticmethod
+    def make_connection_dns_error(host):
+        statistic.on_route('DNS_ERROR', f'DNS_ERROR: {host}')
 
-        backend_port = self.backend.port if self.backend else None
-        real_direct = self.smart_mode and is_direct
-        over_proxy = (backend_port is not None) and not real_direct
+    async def make_connection(self, route_type, host, port=None):
+        if route_type == ROUTE_DNS_ERROR:
+            return self.make_connection_dns_error(host)
 
-        if over_proxy:
-            backend = aiosocks.Socks5Addr(self.backend.host, backend_port)
-            statistic.on_route('PROXY', host, remote)
-            dst = (host, port)  # Use domain-name to avoid DNS cache pollution
+        remote = host
+        ip = None
+
+        if self.is_all_direct():
+            if route_type != ROUTE_ALL_DIRECT:
+                route_type = ROUTE_ALL_DIRECT
+
+        if route_type == ROUTE_ALL_DIRECT:
+            via_proxy = False
+            route_log = 'ALL_DIRECT'
+        elif route_type == ROUTE_ALL_PROXY:
+            via_proxy = True
+            route_log = 'ALL_PROXY'
+        elif route_type == ROUTE_SELECT_DIRECT:
+            via_proxy = False
+            route_log = 'SELECT_DIRECT'
+        elif route_type == ROUTE_SELECT_PROXY:
+            via_proxy = True
+            route_log = 'SELECT_PROXY'
+
+        route_log = f'[{route_log}] {host}'
+        if ip:
+            route_log = f'{route_log} ({ip})'
+
+        if via_proxy:
+            backend = aiosocks.Socks5Addr(self.backend.host, self.backend.port)
+            statistic.on_route('PROXY', route_log)
+            dst = (remote, port)
             connection = await aiosocks.open_connection(
                 proxy=backend, proxy_auth=None,
                 dst=dst, remote_resolve=True)
         else:
-            statistic.on_route('DIRECT', host, remote)
+            statistic.on_route('DIRECT', route_log)
             connection = await asyncio.open_connection(remote, port)
 
         def statistic_(is_out, bytes_):
-            statistic.on_transfer(not is_direct, is_out, bytes_)
+            statistic.on_transfer(via_proxy, is_out, bytes_)
 
         return connection, statistic_
+
+    async def on_open_conn(self, host, port):
+        if self.is_all_direct():
+            return await self.make_connection(ROUTE_ALL_DIRECT, host, port)
+
+        if not self.smart_mode:
+            return await self.make_connection(ROUTE_ALL_PROXY, host, port)
+
+        via_proxy = await self.router.need_proxy(host)
+
+        if via_proxy is None:
+            return await self.make_connection(ROUTE_DNS_ERROR, host)
+        elif via_proxy:
+            return await self.make_connection(ROUTE_SELECT_PROXY, host, port)
+        else:
+            return await self.make_connection(ROUTE_SELECT_DIRECT, host, port)
 
     def on_server_started(self, server, addr):
         self.http_server = server

@@ -1,6 +1,6 @@
 {
     "name": "creeper",
-    "version": "0.0.9",
+    "version": "0.1.0",
     "dependencies": [
         {
             "path": "data/bin/sswin.exe",
@@ -21,9 +21,9 @@
             "uncompress": "zip!v2ray.exe"
         },
         {
-            "path": "data/conf/vendor/cn_ip.txt",
-            "sha256": "1e855b2493221becffe6261c97efce005f2cea65bf506e3c6ca1687d7e7551ad",
-            "download_url": "https://github.com/17mon/china_ip_list/raw/master/china_ip_list.txt"
+            "path": "data/conf/vendor/cacert.pem",
+            "sha256": "966ddc609c44bfd4a8031e00b5cdcd893d43f7677deb9bdc203e87dfd7fff77a",
+            "download_url": "https://github.com/certifi/python-certifi/raw/master/certifi/cacert.pem"
         },
         {
             "path": "build_deps/creeper-installer.exe",

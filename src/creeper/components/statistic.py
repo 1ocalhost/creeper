@@ -37,19 +37,15 @@ def on_transfer(is_proxy, is_out, bytes_):
             transfer.direct.recv += bytes_
 
 
-def on_route(type_, host, ip=None):
+def on_route(type_, msg):
     global route_event
-
-    host_info = str(host)
-    if ip:
-        host_info += f' ({ip})'
 
     if route_event.full():
         route_event.get()
 
     now = time()
-    route_event.put((now, type_, host_info))
-    logger.info(f'{type_}: {host_info}')
+    route_event.put((now, type_, msg))
+    logger.info(f'{type_}: {msg}')
 
 
 def fetch_route_event(time_):

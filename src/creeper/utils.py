@@ -1,16 +1,13 @@
 import time
 import json
-import socks
+import socket
 import asyncio
 import traceback
 import os.path
 import tempfile
-import urllib.request as request
-from urllib.parse import urlparse
 from datetime import timedelta
 from pathlib import Path
 
-from sockshandler import SocksiPyHandler
 from creeper.env import MAIN_DIR
 
 _KiB = 1024 * 1
@@ -128,40 +125,9 @@ def parse_host_port(netloc):
     return tokens[0], port
 
 
-def make_proxy_handler(proxy_url=None):
-    if not proxy_url:
-        return
-
-    url = urlparse(proxy_url)
-    host, port = parse_host_port(url.netloc)
-
-    if (url.scheme == 'http'):
-        type_ = socks.HTTP
-    elif (url.scheme == 'socks4'):
-        type_ = socks.SOCKS4
-    elif (url.scheme == 'socks5'):
-        type_ = socks.SOCKS5
-    else:
-        type_ = None
-
-    if type_ is None:
-        if proxy_url is not None:
-            raise ValueError('bad proxy URL')
-    else:
-        if not port:
-            port = socks.DEFAULT_PORTS[type_]
-
-    if type_ is not None:
-        return SocksiPyHandler(type_, host, port)
-
-
-def open_url(url, proxy_url=None, **kwargs):
-    skip_system_proxy = request.ProxyHandler({})
-    handlers = [skip_system_proxy]
-
-    proxy_handler = make_proxy_handler(proxy_url)
-    if proxy_handler is not None:
-        handlers.append(proxy_handler)
-
-    opener = request.build_opener(*handlers)
-    return opener.open(url, **kwargs)
+def is_ipv4(host):
+    try:
+        socket.inet_aton(host)
+    except socket.error:
+        return False
+    return True

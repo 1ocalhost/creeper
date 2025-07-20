@@ -1,15 +1,17 @@
+import asyncio
 import os
 import re
-import socket
-import asyncio
-import ipaddress
+import time
 from threading import Lock
 
 from expiringdict import ExpiringDict
 from creeper.log import logger
-from creeper.utils import hour_to_sec
-from creeper.impl.dns_lookup import dns_lookup
+from creeper.utils import hour_to_sec, is_ipv4
+from creeper.impl.dns_lookup import doh_lookup
 from creeper.impl.cidr_list import CIDRList
+from creeper.env import APP_CONF, PATH_RULES
+
+DOH_SERVERS = APP_CONF['doh']
 
 
 def make_domain_name_verifier():
@@ -39,6 +41,9 @@ def make_domain_name_verifier():
     return check_if_domain_name
 
 
+is_domain_name = make_domain_name_verifier()
+
+
 class HostsFile:
     def __init__(self):
         self.lock = Lock()
@@ -64,7 +69,7 @@ class HostsFile:
                 return
 
             ip, host = tokens
-            if not SafeDNS.is_ipv4(ip):
+            if not is_ipv4(ip):
                 logger.debug(f'not IPv4: {ip}')
                 return
 
@@ -95,26 +100,17 @@ class HostsFile:
 
 class SafeDNS:
     def __init__(self):
-        self.cache = ExpiringDict(500, hour_to_sec(0.5))
-        self.dns_poisoned = {}
         self.hosts_file = HostsFile()
-        self.is_domain_name = make_domain_name_verifier()
-
-    @staticmethod
-    def is_ipv4(host):
-        try:
-            socket.inet_aton(host)
-        except socket.error:
-            return False
-        return True
+        self.resolving = set()
+        self.cache = ExpiringDict(10000, hour_to_sec(0.5))
 
     @staticmethod
     def is_ipv6(host):
         return host.startswith('[')
 
     @staticmethod
-    def dns_query_impl(host, server):
-        records = dns_lookup(host, server)
+    async def dns_query(host, server):
+        records = await doh_lookup(host, server)
         if not records:
             logger.debug(f'DNS resolving failed: {host} @{server}')
             return
@@ -128,114 +124,130 @@ class SafeDNS:
         logger.debug(f'DNS resolved: {host} => {ip} @{server}')
         return ip
 
-    async def dns_query(self, host):
-        dns_servers = [
-            '119.29.29.29',
-            '8.8.8.8',
-            '223.5.5.5',
-        ]
+    async def resolve(self, domain):
+        for server in DOH_SERVERS:
+            try:
+                ip = await self.dns_query(domain, server)
+            except Exception:
+                continue
 
-        pre_ip = None
-        for times in range(3):
-            if times > 0:
-                await asyncio.sleep(times)
+            if ip:
+                self.cache[domain] = ip
+                return ip
 
-            for server in dns_servers:
-                ip = self.dns_query_impl(host, server)
-                if not ip:
-                    continue
+    async def resolve_cached(self, domain):
+        end_time = time.time() + 30
 
-                if ipaddress.ip_address(ip).is_global:
-                    if pre_ip:
-                        logger.debug(f'dns_poisoned: {ip} to {pre_ip}')
-                        self.dns_poisoned[host] = ip
-                    return ip
+        while time.time() < end_time:
+            ip = self.cache.get(domain)
+            if ip:
+                return ip
 
-                pre_ip = ip
+            if domain in self.resolving:
+                await asyncio.sleep(0.1)
+                continue
 
-        return pre_ip
+            self.resolving.add(domain)
+            try:
+                ip = await self.resolve(domain)
+            except Exception:
+                continue
+            finally:
+                self.resolving.remove(domain)
 
-    def dns_lookup_local(self, host):
+            self.cache[domain] = ip
+            return ip
+
+    def find_local(self, host):
         return self.hosts_file.find(host)
 
-    async def lookup_host(self, host):
-        ipv4 = self.dns_lookup_local(host)
-        if ipv4:
-            return ipv4, True
 
-        # example: "hello" from chrome searching bar
-        if not self.is_domain_name(host):
-            return None, True
+class DomainList:
+    def __init__(self, path):
+        lines = path.read_text().splitlines()
+        lines = map(str.strip, lines)
+        lines = filter(None, lines)
+        self.rules = set(lines)
 
-        return await self.dns_query(host), False
-
-    async def host_to_ipv4(self, host):
-        try:
-            return self.cache[host]
-        except KeyError:
-            pass
-
-        try:
-            return self.dns_poisoned[host]
-        except KeyError:
-            pass
-
-        if self.is_ipv6(host):
-            return
-
-        if self.is_ipv4(host):
-            return host
-        else:
-            ipv4, local = await self.lookup_host(host)
-            if not ipv4:
-                return
-            if not local:
-                self.cache[host] = ipv4
-            return ipv4
+    def contains(self, domain):
+        parts = domain.split('.')
+        for num in range(2, len(parts) + 1):
+            subdomian = '.'.join(parts[-num:])
+            if subdomian in self.rules:
+                return True
 
 
 class Router:
-    def __init__(self, data_file):
+    def __init__(self):
+        self.LIST_MAX = 10000
+        self.WAIT_TIMEOUT = 30
         self.dns = SafeDNS()
-        self.cn_ip = CIDRList(data_file)
-        self.proxy_cache = ExpiringDict(500, hour_to_sec(2))
-        self.dirct_cache = ExpiringDict(500, hour_to_sec(0.5))
-        self.error_cache = ExpiringDict(100, 5)
+        self.cn_ip = CIDRList(PATH_RULES / 'china_ip.txt')
+        self.gfw_ip = CIDRList(PATH_RULES / 'gfw_ip.txt')
+        self.cn_domain = DomainList(PATH_RULES / 'china_domain.txt')
+        self.gfw_domain = DomainList(PATH_RULES / 'gfw_domain.txt')
+        self.proxy_domain = set()
+        self.direct_domain = set()
+        self.determining = set()
 
-    async def query_if_direct(self, host):
-        if self.dns.is_ipv6(host):
-            return True, host
+    def need_proxy_ip(self, ip):
+        return not self.cn_ip.contains(ip) and \
+            not self.gfw_ip.contains(ip)
 
-        ip = await self.dns.host_to_ipv4(host)
-        if not ip:
-            return None, None
+    def add_domain(self, domain, ip):
+        if self.need_proxy_ip(ip):
+            self.proxy_domain.add(domain)
+            return True
+        else:
+            self.direct_domain.add(domain)
+            return False
 
-        if not ipaddress.ip_address(ip).is_global:
-            return True, ip
+    async def need_proxy_domain(self, domain):
+        if self.cn_domain.contains(domain):
+            return False
 
-        if self.cn_ip.contains(ip):
-            return True, ip
+        if self.gfw_domain.contains(domain):
+            return True
 
-        return False, ip
+        end_time = time.time() + self.WAIT_TIMEOUT
 
-    async def is_direct(self, host):
-        for cache in [
-            self.dirct_cache,
-            self.proxy_cache,
-            self.error_cache,
-        ]:
-            try:
-                return cache[host]
-            except KeyError:
+        while time.time() < end_time:
+            if domain in self.proxy_domain:
+                return True
+
+            if domain in self.direct_domain:
+                return False
+
+            if domain in self.determining:
+                await asyncio.sleep(0.1)
                 continue
 
-        result = await self.query_if_direct(host)
-        is_direct_, remote = result
-        if is_direct_ is None:
-            self.error_cache[host] = result
-        elif is_direct_:
-            self.dirct_cache[host] = result
-        else:
-            self.proxy_cache[host] = result
+            self.determining.add(domain)
+            try:
+                ip = await self.dns.resolve(domain)
+            except Exception:
+                continue
+            finally:
+                self.determining.remove(domain)
 
-        return is_direct_, remote
+            if not ip:
+                return
+
+            return self.add_domain(domain, ip)
+
+    async def need_proxy(self, host):
+        if self.dns.is_ipv6(host):
+            return False
+
+        if is_ipv4(host):
+            return self.need_proxy_ip(host)
+
+        ip = self.dns.find_local(host)
+        if ip:
+            return self.need_proxy_ip(ip)
+
+        # example: "hello" from chrome searching bar
+        if not is_domain_name(host):
+            return None
+
+        return await self.need_proxy_domain(host)

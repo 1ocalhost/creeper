@@ -139,8 +139,19 @@ def main():
     if changed:
         write_manifest(manifest)
 
+    app_conf = read_app_conf()
+    for file_name, url in app_conf['rules'].items():
+        dependency = {
+            'path': f'data/conf/vendor/rules/{file_name}.txt',
+            'download_url': url,
+        }
+
+        full_path = top_dir / dependency['path']
+        if not full_path.exists():
+            download(dependency, full_path)
+
 
 if __name__ == '__main__':
     sys.path.append(str(CUR_DIR))
-    from manifest import read_manifest, write_manifest
+    from manifest import read_manifest, write_manifest, read_app_conf
     main()

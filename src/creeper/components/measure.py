@@ -1,110 +1,59 @@
-import asyncio
 import json
-import multiprocessing.dummy as multiprocessing
+import httpx
 from types import SimpleNamespace
 
-from creeper.utils import _KiB, _MiB, now, fmt_exc, open_url
+from creeper.utils import _MiB, now, fmt_exc
 from creeper.env import CONF_DIR, APP_CONF, FILE_SPEED_JSON
 from creeper.proxy.backend import Backend
 
 
-class CancellablePool:
-    def __init__(self, max_workers=3):
-        self._free = {self._new_pool() for _ in range(max_workers)}
-        self._working = set()
-        self._change = asyncio.Event()
-
-    def _new_pool(self):
-        return multiprocessing.Pool(1)
-
-    async def apply(self, fn, *args):
-        """
-        Like multiprocessing.Pool.apply_async, but:
-         * is an asyncio coroutine
-         * terminates the process if cancelled
-        """
-        while not self._free:
-            await self._change.wait()
-            self._change.clear()
-        pool = usable_pool = self._free.pop()
-        self._working.add(pool)
-
-        loop = asyncio.get_event_loop()
-        fut = loop.create_future()
-
-        def _on_done(obj):
-            loop.call_soon_threadsafe(fut.set_result, obj)
-
-        def _on_err(err):
-            loop.call_soon_threadsafe(fut.set_exception, err)
-        pool.apply_async(fn, args, callback=_on_done, error_callback=_on_err)
-
-        try:
-            return await fut
-        except asyncio.CancelledError:
-            pool.terminate()
-            usable_pool = self._new_pool()
-        finally:
-            self._working.remove(pool)
-            self._free.add(usable_pool)
-            self._change.set()
-
-    def shutdown(self):
-        for p in self._working | self._free:
-            p.terminate()
-        self._free.clear()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.shutdown()
-
-
 class SpeedTest:
     MAX_DOWNLOAD_SIZE = 15 * _MiB
-    READ_SIZE = 10 * _KiB
 
     def __init__(self, url, proxy):
         self.url = url
         self.proxy = proxy
-        self.page = None
-
-        manager = multiprocessing.Manager()
-        shared = manager.Namespace()
-        shared.start_time = 0
-        shared.start_dl_time = 0
-        shared.total_dl_size = 0
-        shared.dl_end_time = 0
-        self.shared = shared
+        self.start_time = 0
+        self.start_dl_time = 0
+        self.total_dl_size = 0
+        self.dl_end_time = 0
 
     def _append_dl_data(self, data):
-        shared = self.shared
-        shared.total_dl_size += len(data)
-        shared.dl_end_time = now()
+        self.total_dl_size += len(data)
+        self.dl_end_time = now()
 
-    def connect(self):
-        shared = self.shared
-        shared.start_time = now()
+    async def run_impl(self, client):
+        started_download = False
+        timeout = httpx.Timeout(2, read=1)
 
-        self.page = open_url(self.url, self.proxy)
-        data = self.page.read(1)
-        shared.start_dl_time = now()
-        self._append_dl_data(data)
+        async with client.stream(
+                'GET', self.url, timeout=timeout) as response:
+            end_time = now() + 2.5
+            async for chunk in response.aiter_bytes():
+                if now() > end_time:
+                    break
 
-    def download(self):
-        shared = self.shared
-        if not self.page:
-            return
+                if not started_download:
+                    self.start_dl_time = now()
+                    started_download = True
 
-        while True:
-            data = self.page.read(self.READ_SIZE)
-            if not data:
-                break
+                self._append_dl_data(chunk)
+                if self.total_dl_size >= self.MAX_DOWNLOAD_SIZE:
+                    break
 
-            self._append_dl_data(data)
-            if shared.total_dl_size > self.MAX_DOWNLOAD_SIZE:
-                break
+    async def run(self):
+        self.start_time = now()
+
+        async with httpx.AsyncClient(proxy=self.proxy) as client:
+            try:
+                await self.run_impl(client)
+            except httpx.TimeoutException:
+                pass
+
+        if self.total_dl_size <= 0:
+            raise TimeoutError
+
+        return self.calc()
 
     @staticmethod
     def _calc_speed(size, time):
@@ -114,35 +63,18 @@ class SpeedTest:
             return float('inf')
 
     def calc(self):
-        shared = self.shared
-        connection_time = shared.start_dl_time - shared.start_time
-        download_time = shared.dl_end_time - shared.start_dl_time
+        connection_time = self.start_dl_time - self.start_time
+        download_time = self.dl_end_time - self.start_dl_time
         total_time = connection_time + download_time
 
-        download_speed = self._calc_speed(shared.total_dl_size, download_time)
-        average_dl_speed = self._calc_speed(shared.total_dl_size, total_time)
+        download_speed = self._calc_speed(self.total_dl_size, download_time)
+        average_dl_speed = self._calc_speed(self.total_dl_size, total_time)
 
         return SimpleNamespace(
             connection_time='%.2fs' % connection_time,
             download_speed='%.2fMiB/s' % download_speed,
             average_dl_speed='%.2fMiB/s' % average_dl_speed,
         )
-
-
-async def test_download_speed(url, proxy=None):
-    with CancellablePool(1) as pool:
-        loop = asyncio.get_event_loop()
-        speed_test = SpeedTest(url, proxy)
-        connect = loop.create_task(pool.apply(speed_test.connect))
-
-        await asyncio.wait_for(connect, 2.5)
-        download = loop.create_task(pool.apply(speed_test.download))
-        try:
-            await asyncio.wait_for(download, 2.5)
-        except asyncio.TimeoutError:
-            pass
-
-        return speed_test.calc()
 
 
 def update_speed_cache(server_uid, result):
@@ -186,10 +118,10 @@ async def test_backend_speed(conf):
             raise Exception('failed to start backend')
 
         url = APP_CONF['measure_url']
-        proxy = f'socks5://{backend.host}:{backend.port}'
+        proxy = f'socks5h://{backend.host}:{backend.port}'
 
         try:
-            result = await test_download_speed(url, proxy)
+            result = await SpeedTest(url, proxy).run()
         except Exception as exc:
             update_speed_cache(conf.uid, exc)
             raise

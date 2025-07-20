@@ -21,7 +21,6 @@ from creeper.proxy.feed import add_feed, delete_feed, edit_feed, \
 from creeper.proxy.backend import backend_utilitys
 from creeper.components import statistic
 from creeper.components.measure import test_backend_speed
-from creeper.components.diagnosis import diagnosis_network
 from creeper.impl.win_utils import shell_execute
 from scripts import install
 
@@ -318,7 +317,6 @@ class ApiHandler:
         self.route('POST', '/api/node_config', self.api_node_config)
         self.route('GET ', '/api/user_settings', self.api_get_settings)
         self.route('POST', '/api/user_settings', self.api_set_settings)
-        self.route('GET ', '/api/diagnosis', self.api_diagnosis)
         self.route('POST', '/api/simple_cmd', self.api_simple_cmd)
 
     def route(self, method, path, func):
@@ -429,24 +427,6 @@ class ApiHandler:
         else:
             raise ValueError(f'bad key name: {req_key}')
         await req.result_ok(payload)
-
-    async def api_diagnosis(self, req):
-        writer = ChunkedWriter(req)
-        await writer.begin()
-        await writer.write('<!-- resolve delayed rendering of IE -->' * 20)
-
-        async def call_func(func, text):
-            escaped_text = text.replace('\n', R'\n').replace('"', R'\"')
-            await writer.write(
-                f'<script>parent.{func}("{escaped_text}")</script>')
-
-        async for text in diagnosis_network(self.app):
-            if isinstance(text, list):
-                await call_func('updateState', text[0])
-            else:
-                await call_func('appendLog', text)
-
-        await writer.end()
 
     async def api_simple_cmd(self, req):
         conf = await read_json_body(req)

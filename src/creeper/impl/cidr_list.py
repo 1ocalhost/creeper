@@ -23,9 +23,13 @@ class CIDRList:
         with open(data_file) as file:
             data = file.readlines()
 
+        def is_ipv4_rule(ip):
+            return ':' not in ip
+
+        data = filter(is_ipv4_rule, data)
         data = [line.rstrip() for line in data]
         min_prelen = self.get_min_prefixlen(data)
-        assert(min_prelen in range(1, 33))
+        assert min_prelen in range(1, 33)
 
         self.shift_bits = 32 - min_prelen
         for item in data:
