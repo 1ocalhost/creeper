@@ -22,6 +22,11 @@
   <body>
     <div id="page-content">
       <div
+        v-if="alertMsg"
+        class="alert-msg">
+        {{alertMsg}}
+      </div>
+      <div
         class="server-lists"
         :hiding-enabled="!userSettings.show_hidden_feeds">
         <template>
@@ -248,6 +253,22 @@
       return false;
     }
 
+    function checkError(callback) {
+      return fetch('/api/check_error')
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          return res.json();
+        })
+        .then(data => {
+          if (data.msg) {
+            callback(data.msg);
+          }
+        })
+        .catch(error => callback(`ERROR: ${error}`))
+    }
+
     app = new Vue({
       el: '#page-content',
       data: {
@@ -265,6 +286,7 @@
         showDialog: false,
         dialogTitle: '',
         dialogContent: '',
+        alertMsg: '',
       },
       mounted() {
         new ClipboardJS('.clipboard-button');
@@ -281,6 +303,8 @@
         fetchJSON('/api/token', data => this.token = data.token)
           .then(this.loadUserSetting)
         ;
+
+        checkError(msg => this.alertMsg = msg);
       },
       computed: {
         versionText() {

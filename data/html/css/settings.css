@@ -257,3 +257,11 @@ li.vue-simple-context-menu__item {
   padding: 3px 10px;
   white-space: nowrap;
 }
+
+.alert-msg {
+  text-align: center;
+  background: #fbcece;
+  border: 1px solid red;
+  color: #4b0000;
+  padding: 5px 0;
+}

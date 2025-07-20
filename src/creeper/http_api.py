@@ -22,6 +22,7 @@ from creeper.proxy.backend import backend_utilitys
 from creeper.components import statistic
 from creeper.components.measure import test_backend_speed
 from creeper.impl.win_utils import shell_execute
+from creeper.impl.net_time import get_net_time
 from scripts import install
 
 MIME_HTML = 'text/html'
@@ -308,6 +309,7 @@ class ApiHandler:
         self.route('GET ', self.pac_path, self.get_pac_script)
         self.route('GET ', '/api/token', self.api_token)
         self.route('GET ', '/api/stream', self.api_stream)
+        self.route('GET ', '/api/check_error', self.api_check_error)
         self.route('POST', '/api/add_feed', self.api_add_feed)
         self.route('POST', '/api/delete_feed', self.api_delete_feed)
         self.route('POST', '/api/edit_feed', self.api_edit_feed)
@@ -337,6 +339,19 @@ class ApiHandler:
 
     async def api_stream(self, req):
         await route_stream(req.url.query, req.headers, req.writer)
+
+    async def api_check_error(self, req):
+        net_time = await get_net_time()
+        local_time = time.time()
+        time_diff = abs(local_time - net_time)
+
+        if time_diff > 60:
+            msg = f'Excessive local time drift ({time_diff}s) ' \
+                'may cause some protocols to malfunction.'
+        else:
+            msg = None
+
+        await req.result_ok({'msg': msg})
 
     async def api_add_feed(self, req):
         conf = await read_json_body(req)
