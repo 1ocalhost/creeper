@@ -191,8 +191,10 @@ class Router:
         self.determining = set()
 
     def need_proxy_ip(self, ip):
-        return not self.cn_ip.contains(ip) and \
-            not self.gfw_ip.contains(ip)
+        if self.gfw_ip.contains(ip):
+            return True
+
+        return not self.cn_ip.contains(ip)
 
     def add_domain(self, domain, ip):
         if self.need_proxy_ip(ip):

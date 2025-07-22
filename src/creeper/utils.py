@@ -136,3 +136,5 @@ def is_ipv4(host):
 def fix_proxy_url(proxy):
     if IS_DEBUG and ENV_NO_BACKEND and proxy:
         return proxy.replace(':1081', ':1080')
+    else:
+        return proxy

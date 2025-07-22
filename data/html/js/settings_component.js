@@ -108,7 +108,6 @@ Vue.component('server-list', {
     <div class="server-list" :hidden="feedData.hidden">
       <div class="feed-info card">
         <div class="feed-url-wrapper">
-          <a v-if="scheme" class="text-tag" :scheme="scheme">{{scheme}}</a>
           <input type="text" v-model="feedData.url" :title="feedData.url" readonly />
           <div class="feed-updated">
             <a>{{serversUpdateTip}}</a>
@@ -157,7 +156,7 @@ Vue.component('server-list', {
             :class="serverItemClass(item)"
             v-show="showDuplicate || !item.duplicate">
             <td>
-              <a>{{item.conf.remark}}</a><br />
+              <a>{{item.name}}</a><br />
               <a class="extra-info">{{item.uid}}</a>
             </td>
             <td>
@@ -202,9 +201,6 @@ Vue.component('server-list', {
       }
       return '';
     },
-    scheme() {
-      return this.feedData.scheme;
-    },
   },
   methods: {
     async editFeedUrl() {
@@ -233,15 +229,11 @@ Vue.component('server-list', {
       };
     },
     canTestSpeed(item, index) {
-      if (item.conf.server_port === undefined) {
-        return false;
-      }
-
       if (item.duplicate) {
         return false;
       }
 
-      if (isSpecialItem(item, index)) {
+      if (!item.scheme) {
         return false;
       }
 

@@ -88,14 +88,17 @@ class BackendUtility:
             conf_file_ = conf_file
         return self.backend_uid_exe_path, conf_file_
 
+    def make_conf_data(self, data):
+        return self.make_conf(data.conf)
+
 
 class BackendUtilitySSLike(BackendUtility):
     def __init__(self, *args):
         super().__init__(*args)
 
-    def make_conf_data(self, data):
+    def make_conf(self, conf):
         return {
-            **data.conf,
+            **conf,
             'timeout': 300,
         }
 
@@ -129,41 +132,41 @@ class BackendUtilityV2Ray(BackendUtility):
     def __init__(self):
         super().__init__('v2ray.exe', 'vmess.json')
 
-    def _stream_setting(self, data):
-        result = {'network': data.net}
-        if data.net == 'tcp':
+    def _stream_setting(self, conf):
+        result = {'network': conf.net}
+        if conf.net == 'tcp':
             pass
-        elif data.net == 'ws':
+        elif conf.net == 'ws':
             result['wsSettings'] = {
                 'connectionReuse': True,
-                'path': data.path,
+                'path': conf.path,
                 'headers': {
-                    'Host': data.host
+                    'Host': conf.host
                 }
             }
-        elif data.net == 'h2':
+        elif conf.net == 'h2':
             result['httpSettings'] = {
-                'path': data.path,
-                'host': [data.host],
+                'path': conf.path,
+                'host': [conf.host],
             }
         else:
-            raise TypeError(f'unsupported type: {data.net}')
+            raise TypeError(f'unsupported type: {conf.net}')
 
-        if data.tls == 'tls':
+        if conf.tls == 'tls':
             tls_settings = {'allowInsecure': True}
-            if data.host:
-                tls_settings['serverName'] = data.host
+            if conf.host:
+                tls_settings['serverName'] = conf.host
 
             result['security'] = 'tls'
             result['tlsSettings'] = tls_settings
 
         return result
 
-    def make_conf_data(self, data):
-        data = AttrDict(data.conf)
+    def make_conf(self, conf):
+        conf = AttrDict(conf)
         user = {
-            'id': data.id,
-            'alterId': int(data.aid),
+            'id': conf.id,
+            'alterId': int(conf.aid),
             'security': 'auto',
             'level': 0
         }
@@ -172,12 +175,12 @@ class BackendUtilityV2Ray(BackendUtility):
             'protocol': 'vmess',
             'settings': {
                 'vnext': [{
-                    'address': data.add,
-                    'port': int(data.port),
+                    'address': conf.add,
+                    'port': int(conf.port),
                     'users': [user]
                 }]
             },
-            'streamSettings': self._stream_setting(data)
+            'streamSettings': self._stream_setting(conf)
         }
 
         return {
@@ -194,8 +197,8 @@ class BackendUtilityTrojan(BackendUtility):
     def __init__(self):
         super().__init__('trojan.exe', 'trojan.json')
 
-    def make_conf_data(self, data):
-        conf = AttrDict(data.conf)
+    def make_conf(self, conf):
+        conf = AttrDict(conf)
         return {
             'run_type': 'client',
             'local_addr': BACKEND_LOCAL_ADDR,
@@ -257,11 +260,11 @@ class BackendUtilitys:
     def get_util(self, conf=None):
         if conf is None:
             return self.guess_util()
-        return self.utilitys[conf.type]
+        return self.utilitys[conf.scheme]
 
     def get_full_conf(self, conf):
         for type_, util in self.utilitys.items():
-            if type_ == conf.type:
+            if type_ == conf.scheme:
                 conf_data = util.make_conf_data(conf)
                 return util.conf_file, conf_data
 

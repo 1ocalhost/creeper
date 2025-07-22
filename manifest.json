@@ -32,6 +32,26 @@
             "download_url": "https://github.com/certifi/python-certifi/raw/master/certifi/cacert.pem"
         },
         {
+            "path": "data/conf/vendor/rules/china_ip.txt",
+            "sha256": "808e2bf26f3b73b617572633346e035cb86dde4510d6991c2e104320952e06f1",
+            "download_url": "app_conf:rules.china_ip"
+        },
+        {
+            "path": "data/conf/vendor/rules/gfw_ip.txt",
+            "sha256": "dde4af8e18763c55bca2e479c757f0e08fd0713d3f7bd6234adb0dd251e15d42",
+            "download_url": "app_conf:rules.gfw_ip"
+        },
+        {
+            "path": "data/conf/vendor/rules/china_domain.txt",
+            "sha256": "8c0f3fd1c45ea5c7f6cfa5bcd0bb1327f86cb47f6d66c97f6d89cff54bf543fe",
+            "download_url": "app_conf:rules.china_domain"
+        },
+        {
+            "path": "data/conf/vendor/rules/gfw_domain.txt",
+            "sha256": "5664012e3b2e39fbb4281a1cc7716c989b5febee6688eb57909cf9f139c90925",
+            "download_url": "app_conf:rules.gfw_domain"
+        },
+        {
             "path": "build_deps/creeper-installer.exe",
             "sha256": "40583b75cfbc1113194fe1d42270177309c98fd74e5e2fdfa2699eb7717dc661",
             "download_url": "https://github.com/1ocalhost/creeper-installer/releases/latest/download/creeper-installer.exe"

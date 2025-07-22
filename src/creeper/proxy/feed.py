@@ -5,10 +5,11 @@ import json
 import httpx
 import base64
 from urllib.parse import parse_qsl, urlsplit, unquote
+from types import SimpleNamespace
 
 from creeper.env import CONF_DIR, FILE_FEED_JSON
 from creeper.log import logger
-from creeper.utils import _MiB, \
+from creeper.utils import AttrDict, _MiB, \
     readable_exc, write_json_file, fix_proxy_url
 
 FEED_FILE_PATH = CONF_DIR / FILE_FEED_JSON
@@ -56,14 +57,20 @@ def split_no_empty(obj, sep):
     return list(filter(len, obj.split(sep)))
 
 
-def parse_ss_list(uri):
+def parse_ss_uri(uri):
     splited = urlsplit(uri)
     extra, host = splited.netloc.split('@')
     method, password = b64_decode(extra).split(':')
     server, port = host.split(':')
     remark = unquote(splited.fragment)
 
-    return {
+    meta = SimpleNamespace(
+        name=remark,
+        server=server,
+        port=port,
+        extra='')
+
+    conf = {
         'server': server,
         'server_port': port,
         'method': method,
@@ -71,15 +78,23 @@ def parse_ss_list(uri):
         'remark': remark,
     }
 
+    return meta, conf
 
-def parse_trojan_list(uri):
+
+def parse_trojan_uri(uri):
     splited = urlsplit(uri)
     password, host = splited.netloc.split('@')
     server, port = host.split(':')
     remark = unquote(splited.fragment)
     params = parse_query(splited.query)
 
-    return {
+    meta = SimpleNamespace(
+        name=remark,
+        server=server,
+        port=port,
+        extra='')
+
+    conf = {
         'server': server,
         'server_port': int(port),
         'password': password,
@@ -87,12 +102,13 @@ def parse_trojan_list(uri):
         'remark': remark,
     }
 
+    return meta, conf
 
-def parse_ssr_list(uri):
-    ssr_scheme = 'ssr://'
-    uri_b64 = split_no_empty(uri, ssr_scheme)[0]
 
+def parse_ssr_uri_base(uri):
+    uri_b64 = split_no_empty(uri, 'ssr://')[0]
     conf = re.split('/', b64_decode(uri_b64))
+
     if len(conf) == 3:
         ss_conf = ''.join(conf[:2])
         ssr_conf = conf[2]
@@ -100,20 +116,27 @@ def parse_ssr_list(uri):
         ss_conf = conf[0]
         ssr_conf = conf[1]
 
-    ss_part = ss_conf.split(':', 1)
-    ssr_part = parse_qsl(urlsplit(ssr_conf).query)
+    ss = ss_conf.split(':', 1)
+    ssr = parse_qsl(urlsplit(ssr_conf).query)
+    return ss, dict(ssr)
 
-    return ss_part, dict(ssr_part)
 
-
-def parse_ssr_item(item):
-    ss, ssr = item
+def parse_ssr_uri(uri):
+    ss, ssr = parse_ssr_uri_base(uri)
     ss_param = ss[1].split(':')
     port, protocol, method, obfs, password = ss_param
     decode = b64_decode
 
-    result = {
-        'server': ss[0],
+    server = ss[0]
+    remark = decode(ssr.get('remarks'))
+    meta = SimpleNamespace(
+        name=remark,
+        server=server,
+        port=port,
+        extra='')
+
+    conf = {
+        'server': server,
         'server_port': port,
         'protocol': protocol,
         'method': method,
@@ -122,79 +145,129 @@ def parse_ssr_item(item):
         'obfs_param': decode(ssr.get('obfsparam')),
         'protocol_param': decode(ssr.get('protoparam')),
         'group': decode(ssr.get('group')),
-        'remark': decode(ssr.get('remarks')),
+        'remark': remark,
     }
 
-    return result
+    return meta, conf
 
 
-def parse_vmess_list(uri):
-    ssr_scheme = 'vmess://'
-    uri_b64 = split_no_empty(uri, ssr_scheme)[0]
-    return json.loads(b64_decode(uri_b64))
+def parse_vmess_query_uri(uri_b64):
+    main, extra = uri_b64.split('?')
+    main_conf, server_conf = b64_decode(main).split('@')
+    security, auth_id = main_conf.split(':')
+    server, port = server_conf.split(':')
+    query = parse_query(extra)
+
+    obfs = query['obfs']
+    if obfs == 'websocket':
+        obfs = 'ws'
+
+    return {
+        'add': server,
+        'port': int(port),
+        'security': security,
+        'id': auth_id,
+        'aid': int(query['alterId']),
+        'tls': None,
+        'ps': query['remarks'],
+        'net': 'ws',
+        'path': query['path'],
+        'host': query['obfsParam']
+    }
 
 
-def mark_duplicate(proxy_items, unique_keys):
-    unique_items = set()
+def parse_vmess_uri(uri):
+    uri_b64 = split_no_empty(uri, 'vmess://')[0]
+    if '?' in uri_b64:
+        conf = parse_vmess_query_uri(uri_b64)
+    else:
+        conf = json.loads(b64_decode(uri_b64))
 
-    def filter_(item):
-        key = []
-        for key_name in unique_keys:
-            key.append(item.get(key_name))
-        key = tuple(key)
+    c = AttrDict(conf)
+    extra = f'/{c.net}/{c.host}{c.path}'
+    meta = SimpleNamespace(
+        name=c.ps,
+        server=c.add,
+        port=c.port,
+        extra=extra)
 
-        is_duplicate = key in unique_items
-        unique_items.add(key)
-        return {
-            'duplicate': is_duplicate,
-            'conf': item,
-        }
-
-    return list(map(filter_, proxy_items))
+    return meta, conf
 
 
-def parse_feed_data(feed):
-    all_lines = split_no_empty(b64_decode(feed), '\n')
-    all_lines = list(map(str.strip, all_lines))
+def parse_feed_item(uri):
+    if uri.startswith('STATUS='):
+        _, info = uri.split('=', 1)
+        return split_no_empty(info, '.♥.')
 
-    if not len(all_lines):
-        return {}
+    parts = split_no_empty(uri, '://')
+    if len(parts) == 1:
+        return
 
-    scheme = split_no_empty(all_lines[0], '://')[0]
+    scheme = parts[0]
 
     if scheme == 'ss':
-        proxy_items = list(map(parse_ss_list, all_lines))
-        unique_keys = ['server', 'server_port']
+        parser = parse_ss_uri
     elif scheme == 'ssr':
-        proxy_items = list(map(parse_ssr_list, all_lines))
-        proxy_items = list(map(parse_ssr_item, proxy_items))
-        unique_keys = ['server', 'server_port']
+        parser = parse_ssr_uri
     elif scheme == 'vmess':
-        proxy_items = list(map(parse_vmess_list, all_lines))
-        unique_keys = ['add', 'port', 'net', 'host', 'path']
+        parser = parse_vmess_uri
     elif scheme == 'trojan':
-        proxy_items = list(map(parse_trojan_list, all_lines))
-        unique_keys = ['server', 'server_port']
+        parser = parse_trojan_uri
     else:
         raise ValueError(f'unsupported scheme: {scheme}')
 
-    proxy_items = mark_duplicate(proxy_items, unique_keys)
-    return scheme, proxy_items
+    meta, conf = parser(uri)
+    uid = f'{scheme}://{meta.server}:{meta.port}{meta.extra}'
+
+    return dict(
+        scheme=scheme,
+        conf=conf,
+        uid=uid,
+        host=meta.server,
+        name=meta.name)
+
+
+def parse_feed_data(feed):
+    lines = split_no_empty(b64_decode(feed), '\n')
+    items = map(str.strip, lines)
+    items = map(parse_feed_item, items)
+    items = filter(None, items)
+
+    proxies = []
+    for item in items:
+        if isinstance(item, list):
+            for name in item:
+                proxies.append(dict(name=name))
+        else:
+            proxies.append(item)
+
+    unique_items = set()
+
+    def convert(item):
+        if not item.get('scheme'):
+            return item
+
+        uid = item['uid']
+        item['duplicate'] = uid in unique_items
+        unique_items.add(uid)
+        return item
+
+    return list(map(convert, proxies))
 
 
 def make_feed_data(url, content=None):
     if content is None:
-        scheme, proxy_items = None, []
+        update = None
+        proxies = []
     else:
-        scheme, proxy_items = parse_feed_data(content)
+        update = time.time()
+        proxies = parse_feed_data(content)
 
-    update = time.time() if scheme else None
     return {
         'uid': str(uuid.uuid4()),
         'url': url,
         'update': update,
-        'scheme': scheme,
-        'proxies': proxy_items
+        'proxies': proxies
     }
 
 

@@ -94,9 +94,24 @@ def uncompress(dependency, dl_path, path):
         raise NotImplementedError(type)
 
 
+def get_download_url(dependency):
+    url = dependency['download_url']
+
+    if url.startswith('app_conf:'):
+        path = url.split(':', 1)[1]
+        value = APP_CONF
+
+        for name in path.split('.'):
+            value = value[name]
+
+        return value
+    else:
+        return url
+
+
 def download(dependency, path):
     assert isinstance(path, Path)
-    url = dependency['download_url']
+    url = get_download_url(dependency)
     try_setup_proxy()
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -139,19 +154,9 @@ def main():
     if changed:
         write_manifest(manifest)
 
-    app_conf = read_app_conf()
-    for file_name, url in app_conf['rules'].items():
-        dependency = {
-            'path': f'data/conf/vendor/rules/{file_name}.txt',
-            'download_url': url,
-        }
-
-        full_path = top_dir / dependency['path']
-        if not full_path.exists():
-            download(dependency, full_path)
-
 
 if __name__ == '__main__':
     sys.path.append(str(CUR_DIR))
     from manifest import read_manifest, write_manifest, read_app_conf
+    APP_CONF = read_app_conf()
     main()

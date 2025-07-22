@@ -245,17 +245,6 @@
       return inputedURL;
     }
 
-    function isSpecialItem(item, index) {
-      const host = item.conf.server
-      if ((host.match(/\./g) || []).length <= 1)
-        return true;  // use top domain
-
-      if (['1.1.1.1'].includes(host))
-        return true;
-
-      return false;
-    }
-
     function checkError(callback) {
       return fetch('/api/check_error')
         .then(res => {
@@ -358,41 +347,13 @@
         async apiPostJSONNoAlert(url, obj) {
           return await this.apiPostJSONCallback(url, obj, data => data);
         },
-        makeProxyUID(scheme, proxy) {
-          let extra = '';
-          const conf = proxy.conf;
-          if (scheme === 'vmess') {
-            const host = conf.host || '';
-            const path = conf.path || '';
-            extra = ` - ${host}${path}`;
-          }
-          const serverAddr = conf.server + ':' + conf.server_port;
-          return serverAddr + extra;
-        },
-        adaptPropNames(feedItem) {
-          if (feedItem.scheme === 'vmess') {
-            feedItem.proxies.forEach(server => {
-              const conf = server.conf;
-              addShadowProp(conf, 'remark', conf.ps);
-              addShadowProp(conf, 'server', conf.add);
-              addShadowProp(conf, 'server_port', conf.port);
-            });
-          }
-        },
         addMetaDataToFeedList(items) {
           if (!items) {
             return [];
           }
 
           items.forEach(item => {
-            this.adaptPropNames(item);
             item.proxies.forEach((proxy, i) => {
-              if (isSpecialItem(proxy, i)) {
-                proxy.duplicate = false;
-              }
-
-              proxy.type = item.scheme;
-              proxy.uid = this.makeProxyUID(item.scheme, proxy);
               proxy.testing = false;
             });
 
@@ -439,10 +400,6 @@
         },
         loadSelectedProxy() {
           fetchJSON('/cur_node.json', data => {
-            this.addMetaDataToFeedList([{
-              scheme: data.type,
-              proxies: [data],
-            }]);
             this.activedServer = data.uid;
           });
         },
@@ -603,7 +560,7 @@
             return;
           }
 
-          this.dialogTitle = event.item.conf.remark + ` - ${viewType}`;
+          this.dialogTitle = event.item.name + ` - ${viewType}`;
           this.dialogContent = viewContent;
           this.showDialog = true;
         },
