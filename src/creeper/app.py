@@ -93,7 +93,11 @@ class App:
         if route_type == ROUTE_DNS_ERROR:
             return self.make_connection_dns_error(host)
 
-        remote = host
+        if host == 'localhost':
+            remote = '127.0.0.1'
+        else:
+            remote = host
+
         ip = None
 
         if self.is_all_direct():

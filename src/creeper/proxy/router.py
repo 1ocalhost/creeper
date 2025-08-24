@@ -238,6 +238,9 @@ class Router:
             return self.add_domain(domain, ip)
 
     async def need_proxy(self, host):
+        if host == 'localhost':
+            return False
+
         if self.dns.is_ipv6(host):
             return False
 
