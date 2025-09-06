@@ -122,7 +122,26 @@ class BackendUtilitySSR(BackendUtilitySSLike):
         super().__init__('ssrwin.exe', 'ssr.json')
 
 
-class BackendUtilityV2Ray(BackendUtility):
+class BackendUtilitySSRust(BackendUtility):
+    def __init__(self):
+        super().__init__('ss-rust.exe', 'ss-rust.json')
+
+    def make_conf(self, conf):
+        return {
+            **conf,
+            'timeout': 300,
+        }
+
+    def make_args(self, conf_file=None):
+        bin_file, conf_file_ = self.common_args(conf_file)
+        return [
+            bin_file,
+            '-c', conf_file_,
+            '-b', f'{BACKEND_LOCAL_ADDR}:0',
+        ]
+
+
+class BackendUtilityVmess(BackendUtility):
     INBOUND = {
         'port': 0,
         'listen': BACKEND_LOCAL_ADDR,
@@ -193,6 +212,91 @@ class BackendUtilityV2Ray(BackendUtility):
         return [bin_file, '-c', conf_file_]
 
 
+class BackendUtilityVless(BackendUtility):
+    INBOUND = {
+        'port': 0,
+        'listen': BACKEND_LOCAL_ADDR,
+        'protocol': 'socks'
+    }
+
+    def __init__(self):
+        super().__init__('v2ray.exe', 'vless.json')
+
+    def _stream_setting(self, param):
+        if param.type == 'ws':
+            extra = {
+                'security': 'tls',
+                'tlsSettings': {
+                    "allowInsecure": bool(int(param.allowInsecure)),
+                    "serverName": param.sni
+                },
+                "wsSettings": {
+                    "path": param.path,
+                    "headers": {
+                        "Host": param.host
+                    }
+                }
+            }
+        elif param.type == 'tcp':
+            if param.security == 'reality':
+                sub_settings = {
+                    'realitySettings': {
+                        'serverName': param.servername,
+                        'fingerprint': param.fp,
+                        'show': False,
+                        'publicKey': param.pbk,
+                        'shortId': param.sid,
+                        'spiderX': param.spx,
+                        'mldsa65Verify': '',
+                    }
+                }
+            else:
+                raise TypeError(f'unsupported security type: {param.security}')
+
+            extra = {
+                'security': param.security,
+                **sub_settings
+            }
+        else:
+            raise TypeError(f'unsupported type: {param.type}')
+
+        return {
+            'network': param.type,
+            **extra
+        }
+
+    def make_conf(self, conf):
+        conf = AttrDict(conf)
+        conf.param = AttrDict(conf.param)
+
+        user = {
+            'id': conf.user_id,
+            'flow': conf.param.flow,
+            'encryption': conf.param.get('encryption', 'none'),
+        }
+
+        outbound = {
+            'protocol': 'vless',
+            'settings': {
+                'vnext': [{
+                    'address': conf.address,
+                    'port': conf.port,
+                    'users': [user]
+                }]
+            },
+            'streamSettings': self._stream_setting(conf.param)
+        }
+
+        return {
+            'inbounds': [self.INBOUND],
+            'outbounds': [outbound],
+        }
+
+    def make_args(self, conf_file=None):
+        bin_file, conf_file_ = self.common_args(conf_file)
+        return [bin_file, '-c', conf_file_]
+
+
 class BackendUtilityTrojan(BackendUtility):
     def __init__(self):
         super().__init__('trojan.exe', 'trojan.json')
@@ -233,9 +337,10 @@ class BackendUtilityTrojan(BackendUtility):
 class BackendUtilitys:
     def __init__(self):
         self.utilitys = {
-            'ss': BackendUtilitySS(),
+            'ss': BackendUtilitySSRust(),
             'ssr': BackendUtilitySSR(),
-            'vmess': BackendUtilityV2Ray(),
+            'vmess': BackendUtilityVmess(),
+            'vless': BackendUtilityVless(),
             'trojan': BackendUtilityTrojan(),
         }
 
@@ -320,7 +425,7 @@ class Backend:
         addr_list = find_listen_addr_by_pid(self.process.pid)
         for host, port in addr_list:
             if host == self.host:
-                return port
+                return int(port)
 
     async def start_async(self, conf=None, timeout=5):
         args = self.get_args(conf)

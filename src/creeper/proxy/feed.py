@@ -59,9 +59,9 @@ def split_no_empty(obj, sep):
 
 def parse_ss_uri(uri):
     splited = urlsplit(uri)
-    extra, host = splited.netloc.split('@')
-    method, password = b64_decode(extra).split(':')
-    server, port = host.split(':')
+    method, password = b64_decode(splited.username).split(':', 1)
+    server = splited.hostname
+    port = splited.port
     remark = unquote(splited.fragment)
 
     meta = SimpleNamespace(
@@ -151,6 +151,17 @@ def parse_ssr_uri(uri):
     return meta, conf
 
 
+def vmess_make_meta_extra(net, host, path):
+    result = '/' + net
+    if not path:
+        return result
+
+    if not host:
+        host = '*'
+
+    return f'{result}/{host}{path}'
+
+
 def parse_vmess_query_uri(uri_b64):
     main, extra = uri_b64.split('?')
     main_conf, server_conf = b64_decode(main).split('@')
@@ -184,11 +195,37 @@ def parse_vmess_uri(uri):
         conf = json.loads(b64_decode(uri_b64))
 
     c = AttrDict(conf)
-    extra = f'/{c.net}/{c.host}{c.path}'
+    extra = vmess_make_meta_extra(
+        c.net, c.get('host'), c.get('path'))
+
     meta = SimpleNamespace(
         name=c.ps,
         server=c.add,
         port=c.port,
+        extra=extra)
+
+    return meta, conf
+
+
+def parse_vless_uri(uri):
+    splited = urlsplit(uri)
+    query = parse_query(splited.query)
+    name = unquote(splited.fragment)
+
+    conf = {
+        'name': name,
+        'address': splited.hostname,
+        'port': splited.port,
+        'user_id': splited.username,
+        'param': query,
+    }
+
+    extra = f'/{query["type"]}'
+
+    meta = SimpleNamespace(
+        name=name,
+        server=conf['address'],
+        port=conf['port'],
         extra=extra)
 
     return meta, conf
@@ -211,6 +248,8 @@ def parse_feed_item(uri):
         parser = parse_ssr_uri
     elif scheme == 'vmess':
         parser = parse_vmess_uri
+    elif scheme == 'vless':
+        parser = parse_vless_uri
     elif scheme == 'trojan':
         parser = parse_trojan_uri
     else:

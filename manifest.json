@@ -1,6 +1,6 @@
 {
     "name": "creeper",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "dependencies": [
         {
             "path": "data/bin/sswin.exe",
@@ -13,6 +13,12 @@
             "sha256": "8d33566488c184bca37d20e7eb7eebee6ca26aa156d183fcd151c6819f8bb756",
             "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/ssrwin.exe.zip",
             "uncompress": "zip!ssrwin.exe"
+        },
+        {
+            "path": "data/bin/ss-rust.exe",
+            "sha256": "eb1ee6e4d7c793b90abf450034f47997f5c1c4ec95952368a5aef9f34d8e1f78",
+            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/ss-rust.exe.zip",
+            "uncompress": "zip!ss-rust.exe"
         },
         {
             "path": "data/bin/v2ray.exe",
