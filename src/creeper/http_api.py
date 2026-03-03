@@ -349,7 +349,8 @@ class ApiHandler:
         local_time = time.time()
         time_diff = abs(local_time - net_time)
 
-        if time_diff > 60:
+        # For Shadowsocks-rust 2022-blake3: time drift must be within 30s.
+        if time_diff > 30:
             msg = f'Excessive local time drift ({time_diff}s) ' \
                 'may cause some protocols to malfunction.'
         else:

@@ -1,5 +1,7 @@
-import re
 import asyncio
+import re
+import time
+import traceback
 import urllib.parse
 
 from creeper.log import logger
@@ -189,22 +191,44 @@ async def server_handler(reader, writer, opt):
     task.add_done_callback(client_done)
 
 
+class ExceptionRateLimiter:
+    def __init__(self, duration):
+        self.duration = duration
+        self.records = {}
+
+    @staticmethod
+    def _get_exception_key(exc):
+        frames = traceback.extract_tb(exc.__traceback__)
+        src_frame = frames[-1]
+        return (
+            type(exc).__name__,
+            src_frame.filename,
+            src_frame.lineno,
+        )
+
+    def allowed(self, exc):
+        key = self._get_exception_key(exc)
+        current_time = time.time()
+        last_seen_time = self.records.get(key)
+
+        if last_seen_time is None or \
+                (current_time - last_seen_time) > self.duration:
+            self.records[key] = current_time
+            return True
+        else:
+            return False
+
+
 async def server_loop(host, port, opt):
-    on_exc = opt.get('on_exc')
+    exception_rate_limiter = ExceptionRateLimiter(600)
 
     def exception_handler(loop, context):
         ex = context.get('exception')
         if ex is None:
             return
 
-        if isinstance(ex, AssertionError) and \
-                str(ex) == 'feed_data after feed_eof':
-            return
-
-        if (on_exc):
-            on_exc(ex)
-
-        logger.warning(f'server_loop: {readable_exc(ex)}')
+        if exception_rate_limiter.allowed(ex):
+            logger.warning(f'server_loop: {readable_exc(ex)}')
 
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(exception_handler)

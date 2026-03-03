@@ -163,31 +163,12 @@ class App:
         if not self.pac_server.update_sys_setting(True):
             logger.error('update pac setting')
 
-    def did_listening_socket_close(self, exc):
-        if isinstance(exc, OSError) and '[WinError 64]' in str(exc):
-            return True
-
-        if self.http_server.sockets[0].fileno() == -1:
-            return True
-
-        return False
-
-    def on_server_exc(self, exc):
-        if self.need_restart:
-            return
-
-        if self.did_listening_socket_close(exc):
-            self.need_restart = True
-            self.update_state_icon()
-            self.pac_server.update_sys_setting(False)
-
     def start_server(self):
         http_filter = get_api_filter(self)
         opt = {
             'open_conn': self.on_open_conn,
             'req_filter': http_filter,
             'started': self.on_server_started,
-            'on_exc': self.on_server_exc,
         }
 
         retry_times = 0
