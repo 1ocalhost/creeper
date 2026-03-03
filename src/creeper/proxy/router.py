@@ -182,6 +182,7 @@ class Router:
         self.LIST_MAX = 10000
         self.WAIT_TIMEOUT = 30
         self.dns = SafeDNS()
+        self.direct_ip = CIDRList(PATH_RULES / '../direct_ip.txt')
         self.cn_ip = CIDRList(PATH_RULES / 'china_ip.txt')
         self.gfw_ip = CIDRList(PATH_RULES / 'gfw_ip.txt')
         self.cn_domain = DomainList(PATH_RULES / 'china_domain.txt')
@@ -191,6 +192,9 @@ class Router:
         self.determining = set()
 
     def need_proxy_ip(self, ip):
+        if self.direct_ip.contains(ip):
+            return False
+
         if self.gfw_ip.contains(ip):
             return True
 
