@@ -1,6 +1,6 @@
 {
     "name": "creeper",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "dependencies": [
         {
             "path": "data/bin/sswin.exe",
@@ -39,7 +39,7 @@
         },
         {
             "path": "data/conf/vendor/rules/china_ip.txt",
-            "sha256": "808e2bf26f3b73b617572633346e035cb86dde4510d6991c2e104320952e06f1",
+            "sha256": "ab9069efa5bad5f797face22202461a7bf706212ccd9b7e77a9e2450e19c4f51",
             "download_url": "app_conf:rules.china_ip"
         },
         {
@@ -49,12 +49,12 @@
         },
         {
             "path": "data/conf/vendor/rules/china_domain.txt",
-            "sha256": "8c0f3fd1c45ea5c7f6cfa5bcd0bb1327f86cb47f6d66c97f6d89cff54bf543fe",
+            "sha256": "b600bb096b3e9604713217bcc98831d70f7fbd8fb7dc67a7054ec82cad1ad997",
             "download_url": "app_conf:rules.china_domain"
         },
         {
             "path": "data/conf/vendor/rules/gfw_domain.txt",
-            "sha256": "5664012e3b2e39fbb4281a1cc7716c989b5febee6688eb57909cf9f139c90925",
+            "sha256": "6bf482550a181fde4b784dfa0e5556754f89bbcdbb06d793c8745d3b5384540f",
             "download_url": "app_conf:rules.gfw_domain"
         },
         {

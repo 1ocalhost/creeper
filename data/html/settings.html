@@ -65,6 +65,10 @@
                   </span>
                 </user-settings-option>
                 <user-settings-option
+                  key-name="use_upstream_proxy"
+                  label="Upstream Proxy">
+                </user-settings-option>
+                <user-settings-option
                   key-name="update_via_proxy"
                   label="Update via Proxy">
                 </user-settings-option>
@@ -78,6 +82,7 @@
                 <button @click="openAppFolder">App Folder</button>
                 <button @click="openMonitor">Monitor</button>
                 <button @click="addFeed">Add Feed</button>
+                <button @click="setUpstreamProxy">Upstream Proxy</button>
                 <button @click="updateRules" :disabled="isUpdatingRules">
                   {{isUpdatingRules ? 'Updating' : 'Update'}} Rules
                 </button>
@@ -201,6 +206,28 @@
       } else {
         return str;
       }
+    }
+
+    function isValiProxyUrl(strUrl) {
+      try {
+        const url = new URL(strUrl);
+        const validProtocols = ['http:', 'socks4:', 'socks5:'];
+        if (!validProtocols.includes(url.protocol)) {
+          return 'Unsupported proxy protocol: ' + url.protocol;
+        }
+
+        if (!url.hostname) {
+          return 'Server name is required.';
+        }
+
+        if (!url.port) {
+          return 'Server port is required.';
+        }
+      } catch (e) {
+        return 'Invalid URL format.';
+      }
+
+      return null;
     }
 
     function isValidHttpUrl(strUrl) {
@@ -493,6 +520,30 @@
             alert('Feed already existing: \n' + url);
           } else {
             this.feedList.push(result.feed);
+          }
+        },
+        async setUpstreamProxy() {
+          let proxyStr = prompt(
+            'For example, socks5://user:password@example.com:1080',
+            this.userSettings.upstream_proxy_url || '');
+
+          if (proxyStr === null) {
+            return;
+          }
+
+          proxyStr = proxyStr.trim();
+          if (proxyStr !== '') {
+            const err = isValiProxyUrl(proxyStr);
+            if (err !== null) {
+              alert(err);
+              return;
+            }
+          }
+
+          const data = {key: 'upstream_proxy_url', value: proxyStr};
+          const result = await this.apiPostJSON('/api/user_settings', data);
+          if (result !== null) {
+            this.userSettings.upstream_proxy_url = proxyStr;
           }
         },
         async switchNode(item) {

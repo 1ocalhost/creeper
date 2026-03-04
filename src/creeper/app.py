@@ -1,10 +1,9 @@
 import sys
 import errno
 import asyncio
-import aiosocks
 
 from creeper.utils import check_singleton
-from creeper.impl import http_proxy
+from creeper.impl import http_proxy, proxy_socks
 from creeper.env import ICON_DIR, \
     APP_NAME, APP_CONF, USER_CONF, ENV_NO_BACKEND
 from creeper.log import logger
@@ -122,12 +121,9 @@ class App:
             route_log = f'{route_log} ({ip})'
 
         if via_proxy:
-            backend = aiosocks.Socks5Addr(self.backend.host, self.backend.port)
             statistic.on_route('PROXY', route_log)
-            dst = (remote, port)
-            connection = await aiosocks.open_connection(
-                proxy=backend, proxy_auth=None,
-                dst=dst, remote_resolve=True)
+            connection = await proxy_socks.open_connection(
+                remote, port, self.backend.host, self.backend.port)
         else:
             statistic.on_route('DIRECT', route_log)
             connection = await asyncio.open_connection(remote, port)

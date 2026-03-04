@@ -48,6 +48,8 @@ MEMORY_OPTIONS = [
 JSON_OPTIONS = [
     'allow_lan',
     'show_hidden_feeds',
+    'use_upstream_proxy',
+    'upstream_proxy_url',
 ]
 
 
@@ -441,6 +443,10 @@ class ApiHandler:
             install.enable_startup(req_value)
         elif req_key == 'show_hidden_feeds':
             USER_CONF.show_hidden_feeds = bool(req_value)
+        elif req_key == 'use_upstream_proxy':
+            USER_CONF.use_upstream_proxy = bool(req_value)
+        elif req_key == 'upstream_proxy_url':
+            USER_CONF.upstream_proxy_url = str(req_value)
         elif req_key.startswith('hide_feed:'):
             feed_uid = req_key.split(':')[1]
             await update_feed_conf(feed_uid, hidden=bool(req_value))
