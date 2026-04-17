@@ -79,6 +79,11 @@ th, td {
   margin-bottom: 5px;
 }
 
+.feed-user-info {
+  text-align: center;
+  font-size: 90%;
+}
+
 .feed-updated {
   display: flex;
   flex-direction: column-reverse;

@@ -1,36 +1,12 @@
 {
     "name": "creeper",
-    "version": "0.1.2",
+    "version": "0.2.0",
     "dependencies": [
         {
-            "path": "data/bin/sswin.exe",
-            "sha256": "59da72c97e81d8b2e2ce03097c7cb3e607ff7cbf8013b19dad7070629b9834da",
-            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/sswin.exe.zip",
-            "uncompress": "zip!sswin.exe"
-        },
-        {
-            "path": "data/bin/ssrwin.exe",
-            "sha256": "8d33566488c184bca37d20e7eb7eebee6ca26aa156d183fcd151c6819f8bb756",
-            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/ssrwin.exe.zip",
-            "uncompress": "zip!ssrwin.exe"
-        },
-        {
-            "path": "data/bin/ss-rust.exe",
-            "sha256": "eb1ee6e4d7c793b90abf450034f47997f5c1c4ec95952368a5aef9f34d8e1f78",
-            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/ss-rust.exe.zip",
-            "uncompress": "zip!ss-rust.exe"
-        },
-        {
-            "path": "data/bin/v2ray.exe",
-            "sha256": "580abfdd3a93933d50b4813eb9aeb867227f32b274b2f23da3c8875c21bfa060",
-            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/v2ray.exe.zip",
-            "uncompress": "zip!v2ray.exe"
-        },
-        {
-            "path": "data/bin/trojan.exe",
-            "sha256": "5c764acfd335c9568051ba3516801736181ea1ea9eeac43f1332a2adbfafc250",
-            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/trojan.exe.zip",
-            "uncompress": "zip!trojan.exe"
+            "path": "data/bin/mihomo.exe",
+            "sha256": "15e7bcc7bda156388d82bbb768ee095112785531267cfbc4b62092440c1e2efc",
+            "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/mihomo.exe.zip",
+            "uncompress": "zip!mihomo.exe"
         },
         {
             "path": "data/conf/vendor/cacert.pem",

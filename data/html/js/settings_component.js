@@ -143,6 +143,11 @@ Vue.component('server-list', {
           </div>
         </div>
       </div>
+
+      <div v-if="feedData.user_info" class="feed-info card">
+        <div class="feed-user-info">{{feedData.user_info}}</div>
+      </div>
+
       <div v-if="feedData.proxies.length" class="card">
         <table :class="{'core-content-only': !showExtraInfo}">
           <thead>

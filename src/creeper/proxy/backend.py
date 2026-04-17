@@ -1,21 +1,18 @@
 import os
-import json
 import shutil
 import hashlib
 import asyncio
+import yaml
 from tempfile import mkstemp
 from subprocess import call, Popen, PIPE, CREATE_NO_WINDOW
 
 from creeper.env import CONF_DIR, TMP_DIR, BIN_DIR, FILE_CUR_NODE_JSON
 from creeper.impl.win_utils import get_win_machine_guid
-from creeper.utils import AttrDict, \
-    split_no_empty, run_async, write_json_file
+from creeper.utils import split_no_empty, run_async, write_json_file
 
 POPEN_GENERAL_PARAM = dict(
     stdout=PIPE, stderr=PIPE, creationflags=CREATE_NO_WINDOW
 )
-
-BACKEND_LOCAL_ADDR = '127.0.0.2'
 
 
 def _make_backend_uid():
@@ -92,296 +89,70 @@ class BackendUtility:
         return self.make_conf(data.conf)
 
 
-class BackendUtilitySSLike(BackendUtility):
-    def __init__(self, *args):
-        super().__init__(*args)
+class BackendUtilityMihomo(BackendUtility):
+    def __init__(self):
+        super().__init__('mihomo.exe', 'mihomo.yml')
 
     def make_conf(self, conf):
-        return {
-            **conf,
-            'timeout': 300,
-        }
+        node_name = 'node'
+        proxy_conf = dict(conf)
+        proxy_conf['name'] = node_name
 
-    def make_args(self, conf_file=None):
-        bin_file, conf_file_ = self.common_args(conf_file)
-        return [
-            bin_file,
-            '-c', conf_file_,
-            '-b', BACKEND_LOCAL_ADDR,
-            '-l', '0',
-        ]
-
-
-class BackendUtilitySS(BackendUtilitySSLike):
-    def __init__(self):
-        super().__init__('sswin.exe', 'ss.json')
-
-
-class BackendUtilitySSR(BackendUtilitySSLike):
-    def __init__(self):
-        super().__init__('ssrwin.exe', 'ssr.json')
-
-
-class BackendUtilitySSRust(BackendUtility):
-    def __init__(self):
-        super().__init__('ss-rust.exe', 'ss-rust.json')
-
-    def make_conf(self, conf):
-        return {
-            **conf,
-            'timeout': 300,
-        }
-
-    def make_args(self, conf_file=None):
-        bin_file, conf_file_ = self.common_args(conf_file)
-        return [
-            bin_file,
-            '-c', conf_file_,
-            '-b', f'{BACKEND_LOCAL_ADDR}:0',
-        ]
-
-
-class BackendUtilityVmess(BackendUtility):
-    INBOUND = {
-        'port': 0,
-        'listen': BACKEND_LOCAL_ADDR,
-        'protocol': 'socks'
-    }
-
-    def __init__(self):
-        super().__init__('v2ray.exe', 'vmess.json')
-
-    def _stream_setting(self, conf):
-        result = {'network': conf.net}
-        if conf.net == 'tcp':
-            pass
-        elif conf.net == 'ws':
-            result['wsSettings'] = {
-                'connectionReuse': True,
-                'path': conf.path,
-                'headers': {
-                    'Host': conf.host
+        data = {
+            'mixed-port': 0,
+            'log-level': 'silent',
+            'proxies': [proxy_conf],
+            'proxy-groups': [
+                {
+                    'name': 'GLOBAL',
+                    'type': 'select',
+                    'proxies': [node_name],
                 }
-            }
-        elif conf.net == 'h2':
-            result['httpSettings'] = {
-                'path': conf.path,
-                'host': [conf.host],
-            }
-        else:
-            raise TypeError(f'unsupported type: {conf.net}')
-
-        if conf.tls == 'tls':
-            tls_settings = {'allowInsecure': True}
-            if conf.host:
-                tls_settings['serverName'] = conf.host
-
-            result['security'] = 'tls'
-            result['tlsSettings'] = tls_settings
-
-        return result
-
-    def make_conf(self, conf):
-        conf = AttrDict(conf)
-        user = {
-            'id': conf.id,
-            'alterId': int(conf.aid),
-            'security': 'auto',
-            'level': 0
-        }
-
-        outbound = {
-            'protocol': 'vmess',
-            'settings': {
-                'vnext': [{
-                    'address': conf.add,
-                    'port': int(conf.port),
-                    'users': [user]
-                }]
-            },
-            'streamSettings': self._stream_setting(conf)
-        }
-
-        return {
-            'inbounds': [self.INBOUND],
-            'outbounds': [outbound],
-        }
-
-    def make_args(self, conf_file=None):
-        bin_file, conf_file_ = self.common_args(conf_file)
-        return [bin_file, '-c', conf_file_]
-
-
-class BackendUtilityVless(BackendUtility):
-    INBOUND = {
-        'port': 0,
-        'listen': BACKEND_LOCAL_ADDR,
-        'protocol': 'socks'
-    }
-
-    def __init__(self):
-        super().__init__('v2ray.exe', 'vless.json')
-
-    def _stream_setting(self, param):
-        if param.type == 'ws':
-            extra = {
-                'security': 'tls',
-                'tlsSettings': {
-                    "allowInsecure": bool(int(param.allowInsecure)),
-                    "serverName": param.sni
-                },
-                "wsSettings": {
-                    "path": param.path,
-                    "headers": {
-                        "Host": param.host
-                    }
-                }
-            }
-        elif param.type == 'tcp':
-            if param.security == 'reality':
-                sub_settings = {
-                    'realitySettings': {
-                        'serverName': param.servername,
-                        'fingerprint': param.fp,
-                        'show': False,
-                        'publicKey': param.pbk,
-                        'shortId': param.sid,
-                        'spiderX': param.spx,
-                        'mldsa65Verify': '',
-                    }
-                }
-            else:
-                raise TypeError(f'unsupported security type: {param.security}')
-
-            extra = {
-                'security': param.security,
-                **sub_settings
-            }
-        else:
-            raise TypeError(f'unsupported type: {param.type}')
-
-        return {
-            'network': param.type,
-            **extra
-        }
-
-    def make_conf(self, conf):
-        conf = AttrDict(conf)
-        conf.param = AttrDict(conf.param)
-
-        user = {
-            'id': conf.user_id,
-            'flow': conf.param.flow,
-            'encryption': conf.param.get('encryption', 'none'),
-        }
-
-        outbound = {
-            'protocol': 'vless',
-            'settings': {
-                'vnext': [{
-                    'address': conf.address,
-                    'port': conf.port,
-                    'users': [user]
-                }]
-            },
-            'streamSettings': self._stream_setting(conf.param)
-        }
-
-        return {
-            'inbounds': [self.INBOUND],
-            'outbounds': [outbound],
-        }
-
-    def make_args(self, conf_file=None):
-        bin_file, conf_file_ = self.common_args(conf_file)
-        return [bin_file, '-c', conf_file_]
-
-
-class BackendUtilityTrojan(BackendUtility):
-    def __init__(self):
-        super().__init__('trojan.exe', 'trojan.json')
-
-    def make_conf(self, conf):
-        conf = AttrDict(conf)
-        return {
-            'run_type': 'client',
-            'local_addr': BACKEND_LOCAL_ADDR,
-            'local_port': 0,
-            'remote_addr': conf.server,
-            'remote_port': conf.server_port,
-            'password': [
-                conf.password
             ],
-            'log_level': 2,
-            'ssl': {
-                'verify': False,
-                'verify_hostname': False,
-                'sni': conf.sni,
-                'alpn': [
-                    'h2',
-                    'http/1.1'
-                ],
-                'reuse_session': True,
-                'session_ticket': False
-            }
+            'mode': 'GLOBAL'
         }
+
+        return yaml.dump(data)
 
     def make_args(self, conf_file=None):
         bin_file, conf_file_ = self.common_args(conf_file)
-        return [
-            bin_file,
-            '-c', conf_file_,
-        ]
+        return [bin_file, '-f', conf_file_]
 
 
+# Now switching to support Mihomo as the sole backend.
 class BackendUtilitys:
     def __init__(self):
-        self.utilitys = {
-            'ss': BackendUtilitySSRust(),
-            'ssr': BackendUtilitySSR(),
-            'vmess': BackendUtilityVmess(),
-            'vless': BackendUtilityVless(),
-            'trojan': BackendUtilityTrojan(),
-        }
+        self.utility = BackendUtilityMihomo()
 
     def check(self):
-        for util in self.utilitys.values():
-            util.check()
+        self.utility.check()
 
     def clear_all(self):
-        for util in self.utilitys.values():
-            util.clear_all()
-
-    def bin_args(self, type_, conf_file):
-        util = self.utilitys[type_]
-        bin_file = util.backend_uid_exe_path
-        return util.build_args(bin_file, conf_file)
+        self.utility.clear_all()
 
     def guess_util(self):
-        for util in self.utilitys.values():
-            if util.conf_file.is_file():
-                return util
+        util = self.utility
+        if util.conf_file.is_file():
+            return util
 
     def get_util(self, conf=None):
         if conf is None:
             return self.guess_util()
-        return self.utilitys[conf.scheme]
+        return self.utility
 
     def get_full_conf(self, conf):
-        for type_, util in self.utilitys.items():
-            if type_ == conf.scheme:
-                conf_data = util.make_conf_data(conf)
-                return util.conf_file, conf_data
+        util = self.utility
+        conf_data = util.make_conf_data(conf)
+        return util.conf_file, conf_data
 
     def switch_conf_file(self, conf):
-        for util in self.utilitys.values():
-            util.conf_file.unlink(True)
+        self.utility.conf_file.unlink(True)
 
         write_json_file(CONF_DIR / FILE_CUR_NODE_JSON, conf)
         full_conf = self.get_full_conf(conf)
         if full_conf:
             conf_file, conf_data = full_conf
-            write_json_file(conf_file, conf_data)
+            conf_file.write_text(conf_data)
 
     async def restart(self, backend, conf):
         self.switch_conf_file(conf)
@@ -396,7 +167,7 @@ backend_utilitys = BackendUtilitys()
 class Backend:
     def __init__(self):
         self.process = None
-        self.host = BACKEND_LOCAL_ADDR
+        self.host = '127.0.0.1'
         self.port = None
         self.tmp_conf_file = None
         self.backend_util = None
@@ -423,9 +194,9 @@ class Backend:
 
     def find_listen_port(self):
         addr_list = find_listen_addr_by_pid(self.process.pid)
-        for host, port in addr_list:
-            if host == self.host:
-                return int(port)
+        if addr_list:
+            _, port = addr_list[0]
+            return int(port)
 
     async def start_async(self, conf=None, timeout=5):
         args = self.get_args(conf)
@@ -442,10 +213,11 @@ class Backend:
         return
 
     def create_tmp_conf_file(self, conf):
-        conf_data = self.backend_util.make_conf_data(conf)
-        fd, path = mkstemp('.json')
+        util = self.backend_util
+        conf_data = util.make_conf_data(conf)
+        fd, path = mkstemp(util.conf_file.suffix)
         with os.fdopen(fd, 'w') as fp:
-            fp.write(json.dumps(conf_data, indent=4))
+            fp.write(conf_data)
 
         self.tmp_conf_file = path
         return path

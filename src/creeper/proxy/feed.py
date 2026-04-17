@@ -1,15 +1,12 @@
-import re
 import uuid
 import time
 import json
+import yaml
 import httpx
-import base64
-from urllib.parse import parse_qsl, urlsplit, unquote
-from types import SimpleNamespace
 
 from creeper.env import CONF_DIR, FILE_FEED_JSON
 from creeper.log import logger
-from creeper.utils import AttrDict, _MiB, \
+from creeper.utils import _MiB, \
     readable_exc, write_json_file, fix_proxy_url
 
 FEED_FILE_PATH = CONF_DIR / FILE_FEED_JSON
@@ -23,289 +20,97 @@ class EmptyResponse(Exception):
     pass
 
 
-def parse_query(query):
-    params = {}
-
-    for key, value in parse_qsl(query):
-        if key not in params:
-            params[key] = value
-
-    return params
-
-
 async def fetch_url_content(url, proxy):
     logger.debug(f'fetch feed: {url}')
-    headers = {'User-Agent': 'Creeper'}
+
+    # Simulate popular Clash clients to retrieve accurate proxy
+    # configurations and metadata like 'subscription-userinfo' as
+    # effectively as possible.
+    headers = {'User-Agent': 'clash-verge/2.4.6'}
 
     async with httpx.AsyncClient(
             proxy=proxy,
             timeout=10,
             follow_redirects=True) as client:
         r = await client.get(url, headers=headers)
-        return r.text
+        user_info = r.headers.get('subscription-userinfo')
+        return user_info, r.text
 
 
-def b64_decode(data):
-    if data is None:
+def format_traffic(size_bytes):
+    size_bytes = int(size_bytes)
+    space = ''
+
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if size_bytes < 1024:
+            return f"{size_bytes:.2f}{space}{unit}"
+        size_bytes /= 1024
+
+    return f"{size_bytes:.2f}{space}PB"
+
+
+def parse_subscription_info(info_str):
+    if not info_str:
         return None
 
-    d = data.replace('_', '/').replace('-', '+')
-    return base64.b64decode(d.strip() + '==').decode()
+    parts = [p.strip() for p in info_str.split(';') if p.strip()]
 
+    items = []
+    for part in parts:
+        key, value = part.split('=')
+        if key in ('upload', 'download', 'total'):
+            items.append((key, format_traffic(value)))
+        elif key == 'expire':
+            expire_time = time.localtime(int(value))
+            expire_date = time.strftime('%Y-%m-%d', expire_time)
+            items.append((key, expire_date))
 
-def split_no_empty(obj, sep):
-    return list(filter(len, obj.split(sep)))
-
-
-def parse_ss_uri(uri):
-    splited = urlsplit(uri)
-    method, password = b64_decode(splited.username).split(':', 1)
-    server = splited.hostname
-    port = splited.port
-    remark = unquote(splited.fragment)
-
-    meta = SimpleNamespace(
-        name=remark,
-        server=server,
-        port=port,
-        extra='')
-
-    conf = {
-        'server': server,
-        'server_port': port,
-        'method': method,
-        'password': password,
-        'remark': remark,
-    }
-
-    return meta, conf
-
-
-def parse_trojan_uri(uri):
-    splited = urlsplit(uri)
-    password, host = splited.netloc.split('@')
-    server, port = host.split(':')
-    remark = unquote(splited.fragment)
-    params = parse_query(splited.query)
-
-    meta = SimpleNamespace(
-        name=remark,
-        server=server,
-        port=port,
-        extra='')
-
-    conf = {
-        'server': server,
-        'server_port': int(port),
-        'password': password,
-        'sni': params['sni'],
-        'remark': remark,
-    }
-
-    return meta, conf
-
-
-def parse_ssr_uri_base(uri):
-    uri_b64 = split_no_empty(uri, 'ssr://')[0]
-    conf = re.split('/', b64_decode(uri_b64))
-
-    if len(conf) == 3:
-        ss_conf = ''.join(conf[:2])
-        ssr_conf = conf[2]
-    else:
-        ss_conf = conf[0]
-        ssr_conf = conf[1]
-
-    ss = ss_conf.split(':', 1)
-    ssr = parse_qsl(urlsplit(ssr_conf).query)
-    return ss, dict(ssr)
-
-
-def parse_ssr_uri(uri):
-    ss, ssr = parse_ssr_uri_base(uri)
-    ss_param = ss[1].split(':')
-    port, protocol, method, obfs, password = ss_param
-    decode = b64_decode
-
-    server = ss[0]
-    remark = decode(ssr.get('remarks'))
-    meta = SimpleNamespace(
-        name=remark,
-        server=server,
-        port=port,
-        extra='')
-
-    conf = {
-        'server': server,
-        'server_port': port,
-        'protocol': protocol,
-        'method': method,
-        'obfs': obfs,
-        'password': decode(password),
-        'obfs_param': decode(ssr.get('obfsparam')),
-        'protocol_param': decode(ssr.get('protoparam')),
-        'group': decode(ssr.get('group')),
-        'remark': remark,
-    }
-
-    return meta, conf
-
-
-def vmess_make_meta_extra(net, host, path):
-    result = '/' + net
-    if not path:
-        return result
-
-    if not host:
-        host = '*'
-
-    return f'{result}/{host}{path}'
-
-
-def parse_vmess_query_uri(uri_b64):
-    main, extra = uri_b64.split('?')
-    main_conf, server_conf = b64_decode(main).split('@')
-    security, auth_id = main_conf.split(':')
-    server, port = server_conf.split(':')
-    query = parse_query(extra)
-
-    obfs = query['obfs']
-    if obfs == 'websocket':
-        obfs = 'ws'
-
-    return {
-        'add': server,
-        'port': int(port),
-        'security': security,
-        'id': auth_id,
-        'aid': int(query['alterId']),
-        'tls': None,
-        'ps': query['remarks'],
-        'net': 'ws',
-        'path': query['path'],
-        'host': query['obfsParam']
-    }
-
-
-def parse_vmess_uri(uri):
-    uri_b64 = split_no_empty(uri, 'vmess://')[0]
-    if '?' in uri_b64:
-        conf = parse_vmess_query_uri(uri_b64)
-    else:
-        conf = json.loads(b64_decode(uri_b64))
-
-    c = AttrDict(conf)
-    extra = vmess_make_meta_extra(
-        c.net, c.get('host'), c.get('path'))
-
-    meta = SimpleNamespace(
-        name=c.ps,
-        server=c.add,
-        port=c.port,
-        extra=extra)
-
-    return meta, conf
-
-
-def parse_vless_uri(uri):
-    splited = urlsplit(uri)
-    query = parse_query(splited.query)
-    name = unquote(splited.fragment)
-
-    conf = {
-        'name': name,
-        'address': splited.hostname,
-        'port': splited.port,
-        'user_id': splited.username,
-        'param': query,
-    }
-
-    extra = f'/{query["type"]}'
-
-    meta = SimpleNamespace(
-        name=name,
-        server=conf['address'],
-        port=conf['port'],
-        extra=extra)
-
-    return meta, conf
-
-
-def parse_feed_item(uri):
-    if uri.startswith('STATUS='):
-        _, info = uri.split('=', 1)
-        return split_no_empty(info, '.♥.')
-
-    parts = split_no_empty(uri, '://')
-    if len(parts) == 1:
-        return
-
-    scheme = parts[0]
-
-    if scheme == 'ss':
-        parser = parse_ss_uri
-    elif scheme == 'ssr':
-        parser = parse_ssr_uri
-    elif scheme == 'vmess':
-        parser = parse_vmess_uri
-    elif scheme == 'vless':
-        parser = parse_vless_uri
-    elif scheme == 'trojan':
-        parser = parse_trojan_uri
-    else:
-        raise ValueError(f'unsupported scheme: {scheme}')
-
-    meta, conf = parser(uri)
-    uid = f'{scheme}://{meta.server}:{meta.port}{meta.extra}'
-
-    return dict(
-        scheme=scheme,
-        conf=conf,
-        uid=uid,
-        host=meta.server,
-        name=meta.name)
+    return " ".join([f"{k}={v}" for k, v in items])
 
 
 def parse_feed_data(feed):
-    lines = split_no_empty(b64_decode(feed), '\n')
-    items = map(str.strip, lines)
-    items = map(parse_feed_item, items)
-    items = filter(None, items)
+    user_info_raw, clash_conf_str = feed
+    user_info = parse_subscription_info(user_info_raw)
 
-    proxies = []
-    for item in items:
-        if isinstance(item, list):
-            for name in item:
-                proxies.append(dict(name=name))
-        else:
-            proxies.append(item)
+    def to_proxy(conf):
+        return {
+            'scheme': conf['type'],
+            'conf': conf,
+            'uid': f"{conf['type']}://{conf['server']}:{conf['port']}",
+            'host': conf['server'],
+            'name': conf['name']
+        }
+
+    clash_conf = yaml.safe_load(clash_conf_str)
+    proxies = clash_conf['proxies']
+    proxies = list(map(to_proxy, proxies))
 
     unique_items = set()
 
     def convert(item):
-        if not item.get('scheme'):
-            return item
-
         uid = item['uid']
         item['duplicate'] = uid in unique_items
         unique_items.add(uid)
         return item
 
-    return list(map(convert, proxies))
+    proxies = list(map(convert, proxies))
+    return user_info, proxies
 
 
 def make_feed_data(url, content=None):
     if content is None:
         update = None
+        user_info = None
         proxies = []
     else:
         update = time.time()
-        proxies = parse_feed_data(content)
+        user_info, proxies = parse_feed_data(content)
 
     return {
         'uid': str(uuid.uuid4()),
         'url': url,
         'update': update,
+        'user_info': user_info,
         'proxies': proxies
     }
 
