@@ -1,12 +1,14 @@
+import ctypes
+import ctypes.wintypes
 import os
-import sys
-import platform
-import traceback
 import shutil
-import tempfile
 import subprocess
-from pathlib import Path
+import sys
+import tempfile
+import traceback
+
 from functools import lru_cache
+from pathlib import Path
 
 APP_NAME = 'Creeper'
 APP_UID = 'creeper.pyapp.win32'
@@ -108,20 +110,11 @@ def message_box_cmd(msg):
     subprocess.run(f'mshta vbscript:Execute("{script}")')
 
 
-def check_python():
-    py_arch = platform.architecture()
-    assert py_arch == ('32bit', 'WindowsPE')
-
-
 def get_winnt_ver():
     ver = sys.getwindowsversion()
     major = str(ver.major)
     minor = str(ver.minor)
     return float(major + '.' + minor)
-
-
-def is_os_64bit():
-    return platform.machine().endswith('64')
 
 
 class SpecialFolders:
@@ -262,7 +255,6 @@ def restore_user_files():
 
 def install_app():
     restore_user_files()
-    check_python()
     launcher = install_app_impl()
     os.startfile(launcher)
 
@@ -313,12 +305,6 @@ def main():
             uninstall_app()
 
 
-def gen_url_KB2533623():
-    arch = 'x64' if is_os_64bit() else 'x86'
-    return 'https://github.com/1ocalhost/creeper-bin/blob/main/' + \
-        f'Windows6.1-KB2533623-{arch}.msu'
-
-
 def open_url(url):
     # NOYE: Chrome will lock CWD
     tmp_dir = tempfile.gettempdir()
@@ -329,17 +315,6 @@ def open_url(url):
 
 
 is_main = (__name__ == '__main__')
-
-try:
-    import ctypes
-    import ctypes.wintypes
-except ImportError:
-    if is_main:
-        message_box_cmd('You should install KB2533623 update.')
-        open_url(gen_url_KB2533623())
-        sys.exit(1)
-    else:
-        raise
 
 try:
     WINAPI = WinApi()

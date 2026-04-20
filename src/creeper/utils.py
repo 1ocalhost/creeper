@@ -76,13 +76,6 @@ def split_no_empty(str, sep):
     return filter(len, str.split(sep))
 
 
-def run_async(*tasks):
-    future = asyncio.gather(*tasks)
-    loop = asyncio.get_event_loop()
-    results = loop.run_until_complete(future)
-    return results
-
-
 def now():
     return time.time()
 

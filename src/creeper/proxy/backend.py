@@ -8,7 +8,7 @@ from subprocess import call, Popen, PIPE, CREATE_NO_WINDOW
 
 from creeper.env import CONF_DIR, TMP_DIR, BIN_DIR, FILE_CUR_NODE_JSON
 from creeper.impl.win_utils import get_win_machine_guid
-from creeper.utils import split_no_empty, run_async, write_json_file
+from creeper.utils import split_no_empty, write_json_file
 
 POPEN_GENERAL_PARAM = dict(
     stdout=PIPE, stderr=PIPE, creationflags=CREATE_NO_WINDOW
@@ -158,7 +158,7 @@ class BackendUtilitys:
         self.switch_conf_file(conf)
         if backend:
             backend.quit()
-            await backend.start_async()
+            await backend.start()
 
 
 backend_utilitys = BackendUtilitys()
@@ -189,16 +189,13 @@ class Backend:
             os.unlink(self.tmp_conf_file)
             self.tmp_conf_file = None
 
-    def start(self, **kwargs):
-        return run_async(self.start_async(**kwargs))
-
     def find_listen_port(self):
         addr_list = find_listen_addr_by_pid(self.process.pid)
         if addr_list:
             _, port = addr_list[0]
             return int(port)
 
-    async def start_async(self, conf=None, timeout=5):
+    async def start(self, conf=None, timeout=5):
         args = self.get_args(conf)
         if not args:
             return

@@ -10,12 +10,12 @@
         },
         {
             "path": "data/conf/vendor/cacert.pem",
-            "sha256": "966ddc609c44bfd4a8031e00b5cdcd893d43f7677deb9bdc203e87dfd7fff77a",
+            "sha256": "fc9165a12403263e7ebfbdad7be7a3eac0fa5d325d3c70465f28d3690072ca28",
             "download_url": "https://github.com/certifi/python-certifi/raw/master/certifi/cacert.pem"
         },
         {
             "path": "data/conf/vendor/rules/china_ip.txt",
-            "sha256": "ab9069efa5bad5f797face22202461a7bf706212ccd9b7e77a9e2450e19c4f51",
+            "sha256": "2166bf0e375bb3b678968ef6accb6fcd911c0472ed220441fc59994dcddd08c1",
             "download_url": "app_conf:rules.china_ip"
         },
         {
@@ -25,12 +25,12 @@
         },
         {
             "path": "data/conf/vendor/rules/china_domain.txt",
-            "sha256": "b600bb096b3e9604713217bcc98831d70f7fbd8fb7dc67a7054ec82cad1ad997",
+            "sha256": "8074fc996ddcc05dbc74eb40a2783c20501390f0fbdd2c854da726ff92852498",
             "download_url": "app_conf:rules.china_domain"
         },
         {
             "path": "data/conf/vendor/rules/gfw_domain.txt",
-            "sha256": "6bf482550a181fde4b784dfa0e5556754f89bbcdbb06d793c8745d3b5384540f",
+            "sha256": "8c8dfe3d338ed2e84035a93ed66cb5ce95daaf33c013bd4e1aff5d0bd13b488b",
             "download_url": "app_conf:rules.gfw_domain"
         },
         {
@@ -40,8 +40,8 @@
         },
         {
             "path": "build_deps/python.zip",
-            "sha256": "7aadb6fdd430c0e181867d02bd91039e55b27d8a9c18f223001ce3b28f1138a0",
-            "download_url": "https://www.python.org/ftp/python/3.8.7/python-3.8.7-embed-win32.zip"
+            "sha256": "cda80a9b1e75c0f1b4f9872ca1b417f0d19bce32facc811aea9180e70fad5fb9",
+            "download_url": "https://www.python.org/ftp/python/3.14.4/python-3.14.4-embed-amd64.zip"
         }
     ]
 }

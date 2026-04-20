@@ -159,7 +159,7 @@ class App:
         if not self.pac_server.update_sys_setting(True):
             logger.error('update pac setting')
 
-    def start_server(self):
+    async def start_server(self):
         http_filter = get_api_filter(self)
         opt = {
             'open_conn': self.on_open_conn,
@@ -174,7 +174,8 @@ class App:
                 return
 
             try:
-                http_proxy.run_server(self.app_host, self.app_port, opt)
+                await http_proxy.server_loop(
+                    self.app_host, self.app_port, opt)
             except OSError as e:
                 if e.errno == errno.WSAEADDRINUSE:
                     self.app_port += 1
@@ -182,11 +183,11 @@ class App:
                 else:
                     raise e
 
-    def init_backend(self):
+    async def init_backend(self):
         backend_utilitys.check()
         self.backend = Backend()
 
-        self.backend.start()
+        await self.backend.start()
         if self.backend.port:
             addr = f'{self.backend.host}:{self.backend.port}'
             logger.info(f'[backend] serving on {addr}...')
@@ -270,7 +271,7 @@ class App:
         elif result == MsgBox.IDNO:
             self.handle_command('exit')
 
-    def run(self):
+    async def run_async(self):
         check_singleton()
 
         if USER_CONF.enable_proxy is None:
@@ -278,7 +279,10 @@ class App:
 
         self.init_tray_icon()
         if not ENV_NO_BACKEND:
-            self.init_backend()
+            await self.init_backend()
 
         check_update(self.tray_icon)
-        self.start_server()
+        await self.start_server()
+
+    def run(self):
+        asyncio.run(self.run_async())

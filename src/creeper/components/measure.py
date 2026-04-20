@@ -113,7 +113,7 @@ def update_speed_cache(server_uid, result):
 
 async def test_backend_speed(conf):
     with Backend() as backend:
-        await backend.start_async(conf, timeout=3)
+        await backend.start(conf, timeout=3)
         if backend.port is None:
             raise Exception('failed to start backend')
 

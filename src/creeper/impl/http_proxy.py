@@ -5,7 +5,7 @@ import traceback
 import urllib.parse
 
 from creeper.log import logger
-from creeper.utils import run_async, readable_exc
+from creeper.utils import readable_exc
 from creeper.impl.socks5 import \
     try_negotiate_socks5, end_negotiate_socks5
 
@@ -270,16 +270,12 @@ def make_http_server_filter(handler):
     return filter_
 
 
-def run_server(ip, port, opt={}):
-    run_async(server_loop(ip, port, opt))
-
-
 if __name__ == '__main__':
     def http_handler(path):
         return 'text/html', f'This is a HTTP proxy server. ({path})\n'
 
     opt = {'req_filter': make_http_server_filter(http_handler)}
-    run_server('127.0.0.1', 9400, opt)
+    asyncio.run(server_loop('127.0.0.1', 9400, opt))
 
     # reverse mode: curl http://google.com/ -x 127.0.0.1:9400
     # tunnel mode:  curl https://google.com/ -x 127.0.0.1:9400
