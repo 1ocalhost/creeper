@@ -605,7 +605,7 @@
               return;
 
             viewType = 'Config';
-            viewContent = JSON.stringify(result, null, 4);
+            viewContent = result.value;
           } else {
             console.warn(`unknown: ${optionId}`);
             return;

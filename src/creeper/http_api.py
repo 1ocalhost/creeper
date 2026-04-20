@@ -402,7 +402,7 @@ class ApiHandler:
         conf = await read_json_body(req)
         full_conf = backend_utilitys.get_full_conf(AttrDict(conf))
         _, conf_content = full_conf
-        await req.result_ok(conf_content)
+        await req.result_ok({'value': conf_content})
 
     async def api_get_settings(self, req):
         result = {}
