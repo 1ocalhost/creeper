@@ -1,10 +1,10 @@
 {
     "name": "creeper",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "dependencies": [
         {
             "path": "data/bin/mihomo.exe",
-            "sha256": "15e7bcc7bda156388d82bbb768ee095112785531267cfbc4b62092440c1e2efc",
+            "sha256": "ac842f3e8a3f74db571ced1f747cf8b2358f521ea6e9fdb1d068ce27034483e4",
             "download_url": "https://github.com/1ocalhost/creeper-bin/raw/main/mihomo.exe.zip",
             "uncompress": "zip!mihomo.exe"
         },
