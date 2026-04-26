@@ -35,12 +35,13 @@ class AppIcons:
         self.tray_play = icons_dir / 'tray_play.ico'
         self.tray_play_lan = icons_dir / 'tray_play_lan.ico'
         self.tray_stop = icons_dir / 'tray_stop.ico'
+        self.tray_warn = icons_dir / 'tray_warn.ico'
 
 
 class App:
     def __init__(self):
         self.listen_any_addr = USER_CONF.allow_lan \
-            or USER_CONF.allow_lan_once
+            or USER_CONF.allow_lan_once  # LAN was once allowed.
         if self.listen_any_addr:
             host_name, host_ip = 'any', ADDR_ANY
         else:
@@ -57,7 +58,6 @@ class App:
         self.router = Router()
         self.pac_server = PACServer(self)
         self.backend = None
-        self.need_restart = False
 
     @property
     def did_allow_lan(self):
@@ -153,8 +153,7 @@ class App:
         self.http_server = server
         host, port = addr
         logger.info(f'serving on: {host}:{port}')
-        tray_tip = f'{APP_NAME} ({self.app_host_name}:{port})'
-        self.tray_icon.update(hover_text=tray_tip)
+        self.update_state_icon()
 
         if not self.pac_server.update_sys_setting(True):
             logger.error('update pac setting')
@@ -196,10 +195,6 @@ class App:
 
     def init_tray_icon(self):
         def on_turn_on(icon):
-            if self.need_restart:
-                self.handle_command('restart')
-                return
-
             self.pac_server.update_sys_setting(True)
             self.did_enable_proxy = True
             self.update_state_icon(icon)
@@ -214,9 +209,9 @@ class App:
 
         menu_items = [
             (self.icons.play, 'Turn On', on_turn_on,
-                lambda: not self.did_enable_proxy_menu),
+                lambda: not self.did_enable_proxy),
             (self.icons.stop, 'Turn Off', on_turn_off,
-                lambda: self.did_enable_proxy_menu),
+                lambda: self.did_enable_proxy),
             (self.icons.settings, 'Settings', on_settings),
         ]
 
@@ -226,13 +221,24 @@ class App:
             menu_items, state_icon, APP_NAME, title)
         self.tray_icon.set_magic_handler(self.on_magic)
 
-    @property
-    def did_enable_proxy_menu(self):
-        return self.did_enable_proxy and not self.need_restart
+    def need_restart(self):
+        return USER_CONF.allow_lan and not self.listen_any_addr
+
+    def is_warn_state(self):
+        if not self.smart_mode:
+            return True
+
+        if USER_CONF.use_upstream_proxy:
+            return True
+
+        if self.need_restart():
+            return True
+
+        return False
 
     def make_state_icon(self):
-        if self.need_restart:
-            return self.icons.tray_stop
+        if self.is_warn_state():
+            return self.icons.tray_warn
 
         if self.did_enable_proxy:
             if self.did_allow_lan:
@@ -242,13 +248,32 @@ class App:
         else:
             return self.icons.tray_stop
 
+    def make_state_text(self):
+        result = f'{APP_NAME} ({self.app_host_name}:{self.app_port})'
+
+        extra = []
+        if not self.smart_mode:
+            extra.append('smart mode')
+
+        if USER_CONF.use_upstream_proxy:
+            extra.append('upstream proxy')
+
+        if self.need_restart():
+            extra.append('need restart')
+
+        if extra:
+            result += f' [{", ".join(extra)}]'
+
+        return result
+
     def update_state_icon(self, icon=None):
         tray_icon = icon or self.tray_icon
         if tray_icon is None:
             return
 
         state_icon = self.make_state_icon()
-        tray_icon.update(state_icon)
+        state_text = self.make_state_text()
+        tray_icon.update(state_icon, state_text)
 
     def handle_command(self, command):
         icon = self.tray_icon

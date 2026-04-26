@@ -1,9 +1,11 @@
 html {
-  font-family: arial,sans-serif, 'Microsoft Yahei';
+  font-family: arial, sans-serif, 'Microsoft Yahei';
   color: #212121;
 }
 
-*, *:before, *:after {
+*,
+*:before,
+*:after {
   -moz-box-sizing: border-box;
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
@@ -13,7 +15,8 @@ body {
   background: #f9f9f9;
 }
 
-html, body {
+html,
+body {
   width: 100%;
   margin: 0;
   padding: 0;
@@ -38,7 +41,8 @@ tr:nth-child(even) {
   background: #e8eeef;
 }
 
-th, td {
+th,
+td {
   text-align: left;
   padding: 4px 10px;
 }
@@ -51,10 +55,6 @@ th, td {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-}
-
-.vertical >button {
-  margin: 2px 0;
 }
 
 .text-center {
@@ -100,7 +100,7 @@ th, td {
   padding-left: 2px;
 }
 
-.feed-url-wrapper >input {
+.feed-url-wrapper>input {
   flex: 1;
   outline: none;
   border: none;
@@ -147,7 +147,7 @@ th, td {
   width: max-content;
   background-color: #e8eef3;
   border: 1px solid #5a5a5a78;
-  padding: 10px 20px;
+  padding: 10px 15px;
 }
 
 .ctrl-panel .separator {
@@ -158,6 +158,15 @@ th, td {
 .ctrl-panel a {
   color: #555f94;
   text-shadow: 0 0 8px #bfbfbf80;
+}
+
+.ctrl-panel label {
+  gap: 2px;
+  padding: 2px 8px 2px 4px;
+}
+
+.ctrl-panel button {
+  margin: 3px 0;
 }
 
 .extra-info {
@@ -171,13 +180,32 @@ table.core-content-only .extra-info {
 
 label {
   font-size: 90%;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  background-color: transparent;
+  color: #333;
+}
+
+label:not([disabled]):hover {
+  background-color: #f5f5f5;
+}
+
+label:not([disabled]):active {
+  background-color: #e2e2e2;
+  transform: translateY(1px);
 }
 
 label[disabled] {
   opacity: 0.6;
+  cursor: not-allowed;
 }
 
-input, button, label {
+input,
+button,
+label {
   user-select: none;
 }
 
@@ -208,8 +236,8 @@ tr.actived td:first-child a:first-child::after {
   min-width: 500px;
   padding: 1.5em;
   box-shadow: 0 11px 15px -7px rgb(0 0 0 / 20%),
-      0 24px 38px 3px rgb(0 0 0 / 14%),
-      0 9px 46px 8px rgb(0 0 0 / 12%);
+    0 24px 38px 3px rgb(0 0 0 / 14%),
+    0 9px 46px 8px rgb(0 0 0 / 12%);
 }
 
 .dialog-window button {

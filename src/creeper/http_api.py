@@ -415,7 +415,12 @@ class ApiHandler:
         result['auto_start'] = install.did_enable_startup()
 
         app_conf = {}
+
+        # Avoid using app.need_restart() here so the frontend can update
+        # the UI instantly without calling an API to fetch the latest
+        # "need_restart" status.
         app_conf['listen_any_addr'] = self.app.listen_any_addr
+
         result['app'] = app_conf
         await req.result_ok(result)
 
@@ -452,6 +457,10 @@ class ApiHandler:
             await update_feed_conf(feed_uid, hidden=bool(req_value))
         else:
             raise ValueError(f'bad key name: {req_key}')
+
+        if req_key in ('smart_mode', 'use_upstream_proxy'):
+            self.app.update_state_icon()
+
         await req.result_ok(payload)
 
     async def api_simple_cmd(self, req):
