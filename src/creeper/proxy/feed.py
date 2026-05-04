@@ -3,6 +3,7 @@ import time
 import json
 import yaml
 import httpx
+import hashlib
 
 from creeper.env import CONF_DIR, FILE_FEED_JSON
 from creeper.log import logger
@@ -68,6 +69,16 @@ def parse_subscription_info(info_str):
     return " ".join([f"{k}={v}" for k, v in items])
 
 
+def get_conf_uid(conf):
+    exclude_keys = {'name', 'client-fingerprint'}
+    filtered_conf = {k: v for k, v in conf.items() if k not in exclude_keys}
+
+    json_str = json.dumps(filtered_conf, sort_keys=True, separators=(',', ':'))
+    conf_hash = hashlib.sha256(json_str.encode()).hexdigest()[:8]
+
+    return f"{conf['type']}://{conf['server']}:{conf['port']}/{conf_hash}"
+
+
 def parse_feed_data(feed):
     user_info_raw, clash_conf_str = feed
     user_info = parse_subscription_info(user_info_raw)
@@ -76,7 +87,7 @@ def parse_feed_data(feed):
         return {
             'scheme': conf['type'],
             'conf': conf,
-            'uid': f"{conf['type']}://{conf['server']}:{conf['port']}",
+            'uid': get_conf_uid(conf),
             'host': conf['server'],
             'name': conf['name']
         }
